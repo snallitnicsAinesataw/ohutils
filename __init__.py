@@ -12,7 +12,7 @@ from .core.util import (
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
 
-ver = "0.4"
+ver = "0.5"
 F_ENCRYPT = 1
 F_GORE = 2
 CT_ALL = 'all'

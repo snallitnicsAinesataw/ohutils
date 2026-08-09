@@ -2,7 +2,7 @@ from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey
 from ..core.config import Config, getGlobalConfig
 import zlib
 import struct
-from .obarc import parseBlog, parseBlog3, parseBlog4
+from .obarc import parseBlog2, parseBlog3, parseBlog4
 from typing import Union
 import os
 import time
@@ -35,7 +35,7 @@ def deserializeBlogMerged(data: bytes) -> BlogEntry:
     elif version == 3:
         blog, _ = parseBlog3(blog_data, 0, channel_id, pub_ts, arc_ts)
     else:
-        blog, _ = parseBlog(blog_data, 0, channel_id, pub_ts, arc_ts)
+        blog, _ = parseBlog2(blog_data, 0, channel_id, pub_ts, arc_ts)
     return blog
 
 
