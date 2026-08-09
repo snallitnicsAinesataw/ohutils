@@ -1,6 +1,7 @@
 __pycache__/
 ottosave_202607241508_before-refactor.py
 visual.html
+viewer.ui
 archive_index.json
 comment_index_obc.json
 comment_index_user.json
@@ -10,3 +11,5 @@ _side_1.py
 .idea/
 *.obarc
 *.obchk
+run.py
+rank_actual.py
