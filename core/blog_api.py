@@ -19,11 +19,11 @@ def getBlogRaw(bid: int, config: Config = None) -> dict:
 
 
 @startEnd
-def getLatestBlogRaw(offset:int =0, config: Config = None) -> list:
+def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/latest?offset={offset}&num={config.latestBlogPerReq}"
-    return _requestJson('getLatestBlogRaw', url, config).get("blog_list", [])
+    return _requestJson('getLatestBlogRaw', url, config)
 
 
 @startEnd
@@ -100,3 +100,37 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
     url = f"https://api.ottohub.cn/api/comment/blogs/{bid}"
     data = {"token": config.token, "parent_bcid": str(parent_bcid), "content": content}
     return _postJson("sendComment", url, data, config)
+
+
+@startEnd
+def getRandomBlogRaw(config: Config = None) -> dict:
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}"
+    return _requestJson('getRandomBlogRaw', url, config)
+
+
+@startEnd
+def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc: bool = False,
+                   config: Config = None) -> dict:
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}"\
+          f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
+    return _requestJson('searchBlogsRaw', url, config)
+
+
+@startEnd
+def toggleBlogLike(bid: int, config: Config = None):
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/like/{bid}"
+    return _postJson('toggleBlogLike', url, {'token': config.token}, config)
+
+
+@startEnd
+def toggleBlogFavorite(bid: int, config: Config = None):
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/favorite/{bid}"
+    return _postJson('toggleBlogFavorite', url, {'token': config.token}, config)

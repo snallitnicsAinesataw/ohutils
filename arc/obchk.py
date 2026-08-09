@@ -21,6 +21,8 @@ def serializeBlog(bid: int, config: Config = None) -> bytes:
 def deserializeBlogMerged(data: bytes) -> BlogEntry:
     # 解析头部
     version = data[0]
+    flags = data[1]
+    tag_count = data[21]
     pub_ts = struct.unpack_from('<I', data, 3)[0]
     arc_ts = struct.unpack_from('<I', data, 7)[0]
     channel_id = struct.unpack_from('<H', data, 19)[0]
@@ -29,7 +31,7 @@ def deserializeBlogMerged(data: bytes) -> BlogEntry:
     blog_data = data[22:]
 
     if version == 4:
-        blog, _ = parseBlog4(blog_data, 0, channel_id, pub_ts, arc_ts)
+        blog, _ = parseBlog4(blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
     elif version == 3:
         blog, _ = parseBlog3(blog_data, 0, channel_id, pub_ts, arc_ts)
     else:
