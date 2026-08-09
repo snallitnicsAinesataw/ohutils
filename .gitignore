@@ -1,0 +1,12 @@
+__pycache__/
+ottosave_202607241508_before-refactor.py
+visual.html
+archive_index.json
+comment_index_obc.json
+comment_index_user.json
+_test.py
+_side_1.py
+*.pyc
+.idea/
+*.obarc
+*.obchk
