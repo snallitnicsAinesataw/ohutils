@@ -151,7 +151,7 @@ def startEnd(func):
                         f"end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m"
                     )
                 else:
-                    print(f"{config.colorGray}SE:\033[0m[{func.__name__}]end")
+                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]end")
                 return result
             except Exception:
                 if config.verbose:
