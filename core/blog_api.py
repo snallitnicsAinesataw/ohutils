@@ -1,5 +1,5 @@
 from .util import startEnd, Comment, parseTime, _request, APIError
-from .exceptions import OttoBaseException
+from .exceptions import ExhaustedRetriesError
 from .config import Config, getGlobalConfig
 import requests
 import time
@@ -46,50 +46,43 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
         config = getGlobalConfig()
     all_comments = []
     offset = 0
-    try:
-        while True:
-            if offset != 0 and config.verbose:
-                print(f"[getAllComments]curr offset: {offset}")
+    while True:
+        if offset != 0 and config.verbose:
+            print(f"[getAllComments]curr offset: {offset}")
 
-            data = {'data': {}}  # dummy
-            try:
-                data = getCommentListRaw(bid, parent_bcid, offset, config)
-            except Exception as e:
-                print(e)
-                p = input("[debug/getAllComments]break?")
-                if p:
-                    break
+        try:
+            data = getCommentListRaw(bid, parent_bcid, offset, config)
+        except ExhaustedRetriesError as e:
+            if config.verbose:
+                print(f"[getAllComments]{config.colorRed}fail to get all comments: {e}")
+            return []  # 过于激进?
 
-            comment_list = data['data'].get("comment_list", [])
-            if not comment_list:
-                break
+        comment_list = data['data'].get("comment_list", [])
+        if not comment_list:
+            return []  # 过于激进?
 
-            for c in comment_list:
-                child_num = int(c.get("child_comment_num", 0))
-                comment = Comment(
-                    bcid=int(c["bcid"]),
-                    uid=int(c["uid"]),
-                    timestamp=parseTime(c['time']),
-                    content=c["content"],
-                    reply_count=c["child_comment_num"],
-                    replies=[]
-                )
+        for c in comment_list:
+            child_num = int(c.get("child_comment_num", 0))
+            comment = Comment(
+                bcid=int(c["bcid"]),
+                uid=int(c["uid"]),
+                timestamp=parseTime(c['time']),
+                content=c["content"],
+                reply_count=c["child_comment_num"],
+                replies=[]
+            )
 
-                if child_num > 0:
-                    if config.verbose:
-                        print(f"[getAllComments]Get replies of bcid{comment.bcid}...")
-                    comment.replies = getAllComments(bid, comment.bcid, config)
+            if child_num > 0:
+                if config.verbose:
+                    print(f"[getAllComments]Get replies of bcid{comment.bcid}...")
+                comment.replies = getAllComments(bid, comment.bcid, config)
 
-                all_comments.append(comment)
+            all_comments.append(comment)
 
-            if len(comment_list) < config.commentPerReq:
-                break
-            offset += config.commentPerReq
-            time.sleep(random() * 2)
-    except (TimeoutError, ConnectionError) as e:
-        if config.verbose:
-            print(f"[getAllComments]{_RED}Network error: {e}")
-        raise requests.RequestException(e)
+        if len(comment_list) < config.commentPerReq:
+            break
+        offset += config.commentPerReq
+        time.sleep(random() * 2)
     return all_comments
 
 
