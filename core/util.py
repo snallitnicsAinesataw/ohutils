@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
 from .config import Config, getGlobalConfig, setGlobalConfig
 from contextlib import contextmanager
-from .exceptions import APIError, mappings, MethodNotAllowed
+from .exceptions import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 
 
 @dataclass
@@ -255,11 +255,15 @@ def _request(method: str, return_type: str,
                     raise APIError(f"[{f_name}]{config.colorRed}400 error: {e.response.text}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
-                raise
+                raise ExhaustedRetriesError(
+                    f"[{f_name}]{config.colorRed}Retries ({retries}) exhausted "
+                    f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
             if config.verbose:
                 print(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
             time.sleep(0.5 * (attempt + 1))
-    return {}  # dummy
+    raise ExhaustedRetriesError(
+        f"[{f_name}]{config.colorRed}Retries ({retries}) exhausted "
+        f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
 
 
 def flattenComments(recur_list: list[Comment]) -> list[Comment]:

@@ -288,6 +288,11 @@ class MissingExtensionParameterError(OttoBaseException):
     pass
 
 
+class ExhaustedRetriesError(OttoBaseException):
+    """耗尽重试次数"""
+    pass
+
+
 mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
