@@ -1,4 +1,4 @@
-from .util import _requestJson, startEnd, _postJson
+from .util import _request, startEnd
 from .exceptions import OttoBaseException
 from .config import Config, getGlobalConfig
 from .exceptions import UIDError
@@ -10,7 +10,7 @@ def getUserDetailRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://www.ottohub.cn/api/user/{uid}"
-    return _requestJson('getUserDetailRaw', url, config)
+    return _request('get', 'json', 'getUserDetailRaw', url, config)
 
 
 @startEnd
@@ -18,7 +18,7 @@ def getUserVideoCollectionsRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/collection/videos/collections?uid={uid}"
-    return _requestJson('getUserVideoCollectionsRaw', url, config)
+    return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
 
 
 @startEnd
@@ -26,7 +26,7 @@ def getUserBlogCollectionsRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/collection/blogs/collections?uid={uid}"
-    return _requestJson('getUserVideoCollectionsRaw', url, config)
+    return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
 
 
 @startEnd
@@ -34,7 +34,7 @@ def getUserBlogsRaw(uid: int, offset: int = 0, config: Config = None) -> list:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
-    return _requestJson('getUserBlogsRaw', url, config).get("blog_list", [])
+    return _request('get', 'json', 'getUserBlogsRaw', url, config).get("blog_list", [])
 
 
 @startEnd

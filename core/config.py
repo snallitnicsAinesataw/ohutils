@@ -24,6 +24,7 @@ class Config:
     alwaysUseToken: bool = False
 
     timeout: int = 10
+    uploadTimeout: int = 120
     retries: int = 3
     verbose: bool = False
     noStartEnd: bool = True
@@ -35,6 +36,7 @@ class Config:
     randomBlogPerReq: int = 12
     searchBlogPerReq: int = 12
     channelsPerReq: int = 12
+    managePerReq: int = 12
     msgPerReq: int = 50
     modLogPerReq: int = 20
     videoPerReq: int = 20

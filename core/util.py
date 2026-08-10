@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
-from typing import List
+from typing import List, Union
 import inspect
 import os
 import sys
@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
 from .config import Config, getGlobalConfig, setGlobalConfig
 from contextlib import contextmanager
-from .exceptions import APIError, mappings
+from .exceptions import APIError, mappings, MethodNotAllowed
 
 
 @dataclass
@@ -214,21 +214,35 @@ def getVersion(path: str) -> int:
         return f.read(1)[0]  # 版本号
 
 
-def _requestJson(f_name: str, url: str, config: Config = None) -> dict:
+def _request(method: str, return_type: str,
+             f_name: str, url: str, config: Config = None,
+             data: dict = None, is_long: bool = False) -> Union[dict, bytes]:
     if config is None:
         config = getGlobalConfig()
     retries = config.retries
+    method, return_type = method.lower(), return_type.lower()
+    timeout = config.uploadTimeout if is_long else config.timeout
     for attempt in range(retries):
         try:
             if config.verbose:
-                print(f"[{f_name}]get{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
-            resp = requests.get(url, timeout=config.timeout, headers=config.headers)
+                print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
+            if method == 'get':
+                resp = requests.get(url, timeout=timeout, headers=config.headers)
+            elif method == 'post':
+                resp = requests.post(url, timeout=timeout, headers=config.headers, json=data)
+            elif method == 'put':
+                resp = requests.put(url, timeout=timeout, headers=config.headers, data=data)
+            else:
+                raise MethodNotAllowed
             resp.raise_for_status()
-            jsoned = resp.json()
-            stat, msg = jsoned.get("status"), jsoned.get('message')
-            if stat != "success":
-                raise mappings.get(msg, APIError)(msg)
-            return jsoned
+            if return_type == 'json':
+                jsoned = resp.json()
+                stat, msg = jsoned.get("status"), jsoned.get('message')
+                if stat != "success":
+                    raise mappings.get(msg, APIError)(msg)
+                return jsoned
+            elif return_type == 'content':
+                return resp.content
         except requests.HTTPError as e:
             if e.response.status_code == 400:
                 try:
@@ -237,73 +251,8 @@ def _requestJson(f_name: str, url: str, config: Config = None) -> dict:
                     if stat != "success":
                         raise mappings.get(msg, APIError)(msg)
                 except ValueError:
-                    # 如果响应不是 JSON
+                    # 如果响应不是JSON
                     raise APIError(f"[{f_name}]{config.colorRed}400 error: {e.response.text}")
-        except (requests.RequestException, ValueError) as e:
-            if attempt == retries - 1:
-                raise
-            if config.verbose:
-                print(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
-            time.sleep(0.5 * (attempt + 1))
-
-    return {}  # dummy
-
-
-def _requestContent(f_name: str, url: str, config: Config = None) -> bytes:
-    if config is None:
-        config = getGlobalConfig()
-    retries = config.retries
-    for attempt in range(retries):
-        try:
-            if config.verbose:
-                print(f"[{f_name}]get{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
-            resp = requests.get(url, timeout=config.timeout, headers=config.headers)
-            resp.raise_for_status()
-            return resp.content
-        except requests.HTTPError as e:
-            if e.response.status_code == 400:
-                try:
-                    jsoned = e.response.json()
-                    stat, msg = jsoned.get("status"), jsoned.get('message')
-                    if stat != "success":
-                        raise mappings.get(msg, APIError)(msg)
-                except ValueError:
-                    # 如果响应不是 JSON
-                    raise APIError(f"[{f_name}]{Config.colorRed}400 error: {e.response.text}")
-        except (requests.RequestException, ValueError) as e:
-            if attempt == retries - 1:
-                raise
-            if config.verbose:
-                print(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
-            time.sleep(0.5 * (attempt + 1))
-    return b''  # dummy
-
-
-def _postJson(f_name: str, url: str, data: dict, config: Config = None) -> dict:
-    if config is None:
-        config = getGlobalConfig()
-    retries = config.retries
-    for attempt in range(retries):
-        try:
-            if config.verbose:
-                print(f"[{f_name}]post{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
-            resp = requests.post(url, json=data, timeout=config.timeout, headers=config.headers)
-            resp.raise_for_status()
-            jsoned = resp.json()
-            stat, msg = jsoned.get("status"), jsoned.get('message')
-            if stat != "success":
-                raise mappings.get(msg, APIError)(msg)
-            return jsoned
-        except requests.HTTPError as e:
-            if e.response.status_code == 400:
-                try:
-                    jsoned = e.response.json()
-                    stat, msg = jsoned.get("status"), jsoned.get('message')
-                    if stat != "success":
-                        raise mappings.get(msg, APIError)(msg)
-                except ValueError:
-                    # 如果响应不是 JSON
-                    raise APIError(f"[{f_name}]{Config.colorRed}400 error: {e.response.text}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
                 raise

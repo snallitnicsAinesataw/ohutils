@@ -1,4 +1,4 @@
-from .util import startEnd, Comment, parseTime, _requestJson, APIError, _postJson
+from .util import startEnd, Comment, parseTime, _request, APIError
 from .exceptions import OttoBaseException
 from .config import Config, getGlobalConfig
 import requests
@@ -15,7 +15,7 @@ def getBlogRaw(bid: int, config: Config = None) -> dict:
         url = f"https://api.ottohub.cn/api/blog/{bid}/detail?token={config.token}"
     else:
         url = f"https://api.ottohub.cn/api/blog/{bid}/detail/"
-    return _requestJson('getBlogRaw', url, config)
+    return _request('get', 'json', 'getBlogRaw', url, config)
 
 
 @startEnd
@@ -23,7 +23,7 @@ def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/latest?offset={offset}&num={config.latestBlogPerReq}"
-    return _requestJson('getLatestBlogRaw', url, config)
+    return _request('get', 'json', 'getLatestBlogRaw', url, config)
 
 
 @startEnd
@@ -32,11 +32,11 @@ def getCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -> di
     if config is None:
         config = getGlobalConfig()
     if config.alwaysUseToken:
-        url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}"\
+        url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}" \
               f"&offset={offset}&num={config.commentPerReq}&token={config.token}"
     else:
         url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}&num={config.commentPerReq}"
-    return _requestJson('getCommentListRaw', url, config)
+    return _request('get', 'json', 'getCommentListRaw', url, config)
 
 
 @startEnd
@@ -51,7 +51,7 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
             if offset != 0 and config.verbose:
                 print(f"[getAllComments]curr offset: {offset}")
 
-            data = {'data': {}}   # dummy, TODO: edit this
+            data = {'data': {}}  # dummy
             try:
                 data = getCommentListRaw(bid, parent_bcid, offset, config)
             except Exception as e:
@@ -99,7 +99,7 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/comment/blogs/{bid}"
     data = {"token": config.token, "parent_bcid": str(parent_bcid), "content": content}
-    return _postJson("sendComment", url, data, config)
+    return _request('post', 'json', "sendComment", url, config, data)
 
 
 @startEnd
@@ -107,7 +107,7 @@ def getRandomBlogRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}"
-    return _requestJson('getRandomBlogRaw', url, config)
+    return _request('get', 'json', 'getRandomBlogRaw', url, config)
 
 
 @startEnd
@@ -115,9 +115,9 @@ def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc:
                    config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}"\
+    url = f"https://api.ottohub.cn/api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
           f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
-    return _requestJson('searchBlogsRaw', url, config)
+    return _request('get', 'json', 'searchBlogsRaw', url, config)
 
 
 @startEnd
@@ -125,7 +125,7 @@ def toggleBlogLike(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/like/{bid}"
-    return _postJson('toggleBlogLike', url, {'token': config.token}, config)
+    return _request('post', 'json', 'toggleBlogLike', url, config, {'token': config.token})
 
 
 @startEnd
@@ -133,4 +133,36 @@ def toggleBlogFavorite(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/favorite/{bid}"
-    return _postJson('toggleBlogFavorite', url, {'token': config.token}, config)
+    return _request('post', 'json', 'toggleBlogFavorite', url, config, {'token': config.token})
+
+
+@startEnd
+def getManageBlogsRaw(offset: int = 0, config: Config = None) -> dict:
+    if config is None:
+        config = getGlobalConfig()
+    url = (
+        f"https://api.ottohub.cn/api/blog/manage-list?num={config.managePerReq}&offset={offset}&_t={int(time.time())}"
+        f"&token={config.token}")
+    return _request('get', 'json', "getManageBlogsRaw", url, config)
+
+
+@startEnd
+def getFavoriteBlogsRaw(offset: int = 0, config: Config = None) -> dict:
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
+          f"&_t={int(time.time())}&token={config.token}"
+    return _request('get', 'json', "getFavoriteBlogsRaw", url, config)
+
+
+@startEnd
+def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Config = None):
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/blog/{bid}"
+    data = {'token': config.token}
+    if is_gore is not None:
+        data['is_gore'] = int(is_gore)
+    if tags is not None:
+        data['tag'] = tags
+    return _request('put', 'json', 'editBlog', url, config, data)
