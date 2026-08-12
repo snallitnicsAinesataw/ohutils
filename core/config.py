@@ -50,6 +50,8 @@ class Config:
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
 
+    SQLName: str = "oh_general.db"
+
     chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     blogChunkName: str = "chk_%i_%i_fl-%i.obchk"
     lookupTableBias: int = 32
