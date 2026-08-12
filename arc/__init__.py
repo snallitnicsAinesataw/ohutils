@@ -16,3 +16,4 @@ from .indexes import (
     buildBlogIndex, buildUserCommentIdx, buildOBCCommentIdx,
     loadBlogIndex, loadUserCommentIdx, loadOBCCommentIdx,
 )
+from . import sql_io

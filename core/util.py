@@ -217,6 +217,8 @@ def getVersion(path: str) -> int:
 def _request(method: str, return_type: str,
              f_name: str, url: str, config: Config = None,
              data: dict = None, is_long: bool = False) -> Union[dict, bytes]:
+    """method: get / post / put
+    return_type: json / content"""
     if config is None:
         config = getGlobalConfig()
     retries = config.retries

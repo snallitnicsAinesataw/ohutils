@@ -51,6 +51,7 @@ class Config:
     OBCCommentIdxName: str = "comment_index_obc.json"
 
     SQLName: str = "oh_general.db"
+    useSQL: bool = False
 
     chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     blogChunkName: str = "chk_%i_%i_fl-%i.obchk"
