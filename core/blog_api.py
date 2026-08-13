@@ -99,7 +99,8 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
 def getRandomBlogRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}"
+    url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}" + \
+          f"&token={config.token}" if config.alwaysUseToken else ""
     return _request('get', 'json', 'getRandomBlogRaw', url, config)
 
 
@@ -109,7 +110,8 @@ def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
-          f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
+          f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}" + \
+          f"&token={config.token}" if config.alwaysUseToken else ""
     return _request('get', 'json', 'searchBlogsRaw', url, config)
 
 

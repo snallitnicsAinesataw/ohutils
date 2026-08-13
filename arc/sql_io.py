@@ -18,9 +18,9 @@ _MAP = {1: ('oh_user', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEX
 # {api_k: str -> tuple[db_k: str, factory: callable]}
 _MAP_USER_TO_DB = {'uid': ('uid', int), 'username': ('name', None), 'intro': ('intro', None),
                    'time': ('create_ts', parseTime), 'sex': ('sex', None),
-                   'honour': ('honour', None), 'experience': ('exp', int), 'video_num': ('video', None),
-                   'blog_num': ('blog', None), 'seiga_num': ('seiga', None), 'media_num': ('media', None),
-                   'followings_count': ('follow', None), 'fans_count': ('fan', int)}
+                   'honour': ('honour', None), 'experience': ('exp', int), 'video_num': ('video', int),
+                   'blog_num': ('blog', int), 'seiga_num': ('seiga', int), 'media_num': ('media', int),
+                   'followings_count': ('follow', int), 'fans_count': ('fan', int)}
 
 
 @startEnd
@@ -72,7 +72,7 @@ def writeData(sql_type: int, conn: sqlite3.Connection, no_update: bool = False, 
 def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kw):
     cur = conn.cursor()
     fields_str = ", ".join(fields) if fields else "*"
-    cond = " AND ".join([f"{k} = ?" for k in kw.keys()])
-    query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} WHERE {cond}"
+    cond = 'WHERE ' if kw.keys() else '' + " AND ".join([f"{k} = ?" for k in kw.keys()])
+    query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"
     cur.execute(query, tuple(kw.values()))
     return cur.fetchall()

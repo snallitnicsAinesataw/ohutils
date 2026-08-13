@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import argparse
 
 import py7zr
 import tempfile
@@ -12,6 +13,15 @@ from PyQt5.QtWidgets import QTreeWidgetItem, QShortcut, QMessageBox, QStyledItem
 import viewer
 from ottosave.arc import loadObarcMerged, loadObarcBytesMerged
 from ottosave import formatTime
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Ottoread args")
+    parser.add_argument("--bid", type=int, default=1)
+    return parser.parse_args()
+
+
+args = parse_args()
 
 
 # 糊成一坨了
@@ -57,7 +67,7 @@ class MainWin(QtWidgets.QMainWindow, viewer.UiMainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self, content='', uid=0, title='', pub_time_f='', arc_time_f='', view=0, fav=0, like=0,
-                     comments=[], channel_id=0, gore='', tag_str='', attach_vid=0)
+                     comments=[], channel_id=0, gore='', tag_str='', attach_vid=0, initial=args.bid)
         self.btnLoad.clicked.connect(self.renderObarc)
         shortcut = QShortcut(QKeySequence("F7"), self)
         shortcut.activated.connect(self.renderObarc)
