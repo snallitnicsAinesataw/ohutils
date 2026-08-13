@@ -41,7 +41,7 @@ class Config:
     modLogPerReq: int = 20
     videoPerReq: int = 20
 
-    savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
+    savePath: str = 'D:\\_ARCHIVE\\E_ABOVE5000\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ottosave\\'
     policy: str = 'merge'
     fileName: str = "ob%i.obarc"
@@ -53,7 +53,7 @@ class Config:
     SQLName: str = "oh_general.db"
     useSQL: bool = False
 
-    chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
+    chunkPath: str = 'D:\\_ARCHIVE\\E_ABOVE5000\\'  # should be .\
     blogChunkName: str = "chk_%i_%i_fl-%i.obchk"
     lookupTableBias: int = 32
 

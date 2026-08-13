@@ -57,7 +57,7 @@ class WordWrapDelegate(QStyledItemDelegate):
 
 def renderMentionSafe(text):
     return re.sub(
-        r'\[(@[^\]]*?)\]\(https?://www\.ottohub\.cn/u/(\d+)/?\)',
+        r'\[(@[^]]*?)]\(https?://www\.ottohub\.cn/u/(\d+)/?\)',
         r'@ou\2',
         text
     )
@@ -75,7 +75,7 @@ class MainWin(QtWidgets.QMainWindow, viewer.UiMainWindow):
 
     def renderObarc(self):
         bid = self.numOid.value()
-        b_path = f'D:/_ARCHIVE/DISP/ob{bid}.obarc'
+        b_path = f'D:/_ARCHIVE/E_ABOVE5000/ob{bid}.obarc'
         if not os.path.exists(b_path):
             succ, data = self.extractFrom7z(bid)
             if not succ:
