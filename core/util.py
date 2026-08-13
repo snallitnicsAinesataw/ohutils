@@ -77,6 +77,10 @@ class BlogEntry:
     def toDict(self):
         return asdict(self)
 
+    def toDictShallow(self):
+        """不转换comments: list[Comment] -> list[dict]"""
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
 
 @dataclass
 class VideoEntry:
