@@ -38,8 +38,7 @@ def getAllDanmaku(vid: int) -> List[Danmaku]:
 def getPopularVideosRaw(time_limit_day: int = 7, offset: int = 0, config: Config = None):
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/video/popular?time_limit={time_limit_day}&offset={offset}&num={config.videoPerReq}"\
-          f"&token={config.token}" if config.alwaysUseToken else ""
+    url = f"https://api.ottohub.cn/api/video/popular?time_limit={time_limit_day}&offset={offset}&num={config.videoPerReq}"
     return _request('get', 'json', "getPopularVideosRaw", url, config)
 
 
@@ -47,8 +46,7 @@ def getPopularVideosRaw(time_limit_day: int = 7, offset: int = 0, config: Config
 def getRandomVideosRaw(config: Config = None):
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/video/random?num={config.videoPerReq}" \
-          f"&token={config.token}" if config.alwaysUseToken else ""
+    url = f"https://api.ottohub.cn/api/video/random?num={config.videoPerReq}"
     return _request('get', 'json', "getRandomVideosRaw", url, config)
 
 
@@ -56,6 +54,5 @@ def getRandomVideosRaw(config: Config = None):
 def getLatestVideosRaw(type_: int, offset: int = 0, config: Config = None):
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/video/new?offset={offset}&type={type_}&num={config.videoPerReq}"\
-          f"&token={config.token}" if config.alwaysUseToken else ""
+    url = f"https://api.ottohub.cn/api/video/new?offset={offset}&type={type_}&num={config.videoPerReq}"
     return _request('get', 'json', "getLatestVideosRaw", url, config)

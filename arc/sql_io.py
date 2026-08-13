@@ -1,7 +1,8 @@
 import sqlite3
 import os
+from typing import Union
 from ..core.config import Config, getGlobalConfig
-from ..core.util import parseTime, _request, startEnd
+from ..core.util import parseTime, _request, startEnd, BlogEntry
 
 
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
@@ -39,6 +40,13 @@ def User2DB(data: dict, send_request: bool = True, config: Config = None) -> dic
         mapped['avatar'] = _request('get', 'content', 'User2DB', data['avatar_url'], config=config)
         mapped['cover'] = _request('get', 'content', 'User2DB', data['cover_url'], config=config)
     return mapped
+
+
+@startEnd
+def Blog2DB(data: Union[dict, BlogEntry], config: Config = None) -> dict:
+    if isinstance(data, BlogEntry):
+        data = data.toDict()
+
 
 
 def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:

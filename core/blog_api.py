@@ -11,10 +11,7 @@ from random import random
 def getBlogRaw(bid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    if config.alwaysUseToken:
-        url = f"https://api.ottohub.cn/api/blog/{bid}/detail?token={config.token}"
-    else:
-        url = f"https://api.ottohub.cn/api/blog/{bid}/detail/"
+    url = f"https://api.ottohub.cn/api/blog/{bid}/detail/"
     return _request('get', 'json', 'getBlogRaw', url, config)
 
 
@@ -31,11 +28,7 @@ def getCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -> di
     """拉取一层评论（不递归）"""
     if config is None:
         config = getGlobalConfig()
-    if config.alwaysUseToken:
-        url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}" \
-              f"&offset={offset}&num={config.commentPerReq}&token={config.token}"
-    else:
-        url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}&num={config.commentPerReq}"
+    url = f"https://api.ottohub.cn/api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}&num={config.commentPerReq}"
     return _request('get', 'json', 'getCommentListRaw', url, config)
 
 
@@ -99,8 +92,7 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
 def getRandomBlogRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}" + \
-          f"&token={config.token}" if config.alwaysUseToken else ""
+    url = f"https://api.ottohub.cn/api/blog/latest?num={config.randomBlogPerReq}"
     return _request('get', 'json', 'getRandomBlogRaw', url, config)
 
 
@@ -110,8 +102,7 @@ def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc:
     if config is None:
         config = getGlobalConfig()
     url = f"https://api.ottohub.cn/api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
-          f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}" + \
-          f"&token={config.token}" if config.alwaysUseToken else ""
+          f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
     return _request('get', 'json', 'searchBlogsRaw', url, config)
 
 

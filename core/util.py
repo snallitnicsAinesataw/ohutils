@@ -15,6 +15,7 @@ from cryptography.exceptions import InvalidTag
 from .config import Config, getGlobalConfig, setGlobalConfig
 from contextlib import contextmanager
 from .exceptions import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 
 @dataclass
@@ -226,6 +227,12 @@ def _request(method: str, return_type: str,
     timeout = config.uploadTimeout if is_long else config.timeout
     for attempt in range(retries):
         try:
+            if config.alwaysUseToken:
+                parsed = urlparse(url)
+                query: dict[str, List[str]] = parse_qs(parsed.query) # noqa, PyCharm别扯
+                query['token'] = [config.token]
+                new_query = urlencode(query, doseq=True)
+                url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
                 print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
             if method == 'get':
