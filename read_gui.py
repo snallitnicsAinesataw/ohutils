@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QTreeWidgetItem, QShortcut, QMessageBox, QStyledItem
 
 import viewer
 from ottosave.arc import loadObarcMerged, loadObarcBytesMerged
-from ottosave import formatTime
+from ottosave import formatTime, Config, setGlobalConfig
 
 
 def parse_args():
@@ -20,7 +20,8 @@ def parse_args():
     parser.add_argument("--bid", type=int, default=1)
     return parser.parse_args()
 
-
+cfg = Config.fromDict({'savePath':'D:\\_ARCHIVE\\DISP\\'})
+setGlobalConfig(cfg)
 args = parse_args()
 
 
@@ -75,7 +76,7 @@ class MainWin(QtWidgets.QMainWindow, viewer.UiMainWindow):
 
     def renderObarc(self):
         bid = self.numOid.value()
-        b_path = f'D:/_ARCHIVE/E_ABOVE5000/ob{bid}.obarc'
+        b_path = f'D:\\_ARCHIVE\\DISP\\ob{bid}.obarc'
         if not os.path.exists(b_path):
             succ, data = self.extractFrom7z(bid)
             if not succ:
