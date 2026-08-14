@@ -6,7 +6,7 @@ from .config import Config, getGlobalConfig
 def getUnreadMsgNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/im/unread-count?token={config.token}"
+    url = f"{config.APIBase}api/im/unread-count?token={config.token}"
     return _request('get', 'json', 'getUnreadMsgNumRaw', url, config)
 
 
@@ -14,7 +14,7 @@ def getUnreadMsgNumRaw(config: Config = None) -> dict:
 def getUnreadModerationNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/moderation/logs/unread-count?token={config.token}"
+    url = f"{config.APIBase}api/moderation/logs/unread-count?token={config.token}"
     return _request('get', 'json', 'getUnreadModerationNumRaw', url, config)
 
 
@@ -34,7 +34,7 @@ def getUnreadCounts(config: Config = None) -> dict:
 def getIMRaw(receiver: int, offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/im/conversations/{receiver}/messages?offset={offset}"\
+    url = f"{config.APIBase}api/im/conversations/{receiver}/messages?offset={offset}"\
           f"&num={config.msgPerReq}&if_time_desc={int(not config.ascending)}&token={config.token}"
     return _request('get', 'json', 'getIMRaw', url, config)
 
@@ -43,7 +43,7 @@ def getIMRaw(receiver: int, offset: int = 0, config: Config = None) -> dict:
 def getModerationRaw(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://www.ottohub.cn/api/moderation/logs?offset={offset}&num={config.modLogPerReq}&token={config.token}"
+    url = f"{config.APIBase}api/moderation/logs?offset={offset}&num={config.modLogPerReq}&token={config.token}"
     return _request('get', 'json', 'getModerationRaw', url, config)
 
 

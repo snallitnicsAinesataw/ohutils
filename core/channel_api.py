@@ -6,7 +6,7 @@ from .config import Config, getGlobalConfig
 def getRecChannelsRaw(page: int = 1, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/channel?page={page}&limit={config.channelsPerReq}"\
+    url = f"{config.APIBase}api/channel?page={page}&limit={config.channelsPerReq}"\
           f"&sort={config.sorting}&order={'asc' if config.ascending else 'desc'}"
     return _request('get', 'json', 'getRecChannelsRaw', url, config)
 
@@ -15,7 +15,7 @@ def getRecChannelsRaw(page: int = 1, config: Config = None) -> dict:
 def getChannelDetailRaw(cid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/channel/{cid}"
+    url = f"{config.APIBase}api/channel/{cid}"
     return _request('get', 'json', 'getChannelDetailRaw', url, config)
 
 
@@ -23,7 +23,7 @@ def getChannelDetailRaw(cid: int, config: Config = None) -> dict:
 def getChannelSectionsRaw(cid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/channel/{cid}/sections"
+    url = f"{config.APIBase}api/channel/{cid}/sections"
     return _request('get', 'json', 'getChannelSectionsRaw', url, config)
 
 
@@ -31,7 +31,7 @@ def getChannelSectionsRaw(cid: int, config: Config = None) -> dict:
 def getChannelNoticeRaw(cid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/channel/{cid}/notices"
+    url = f"{config.APIBase}api/channel/{cid}/notices"
     return _request('get', 'json', 'getChannelNoticeRaw', url, config)
 
 
@@ -39,6 +39,6 @@ def getChannelNoticeRaw(cid: int, config: Config = None) -> dict:
 def getChannelContentRaw(cid: int, type_: str = 'all', page: int = 1, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/channel/{cid}/content?type={type_}&page={page}"\
+    url = f"{config.APIBase}api/channel/{cid}/content?type={type_}&page={page}"\
           f"&limit={config.channelsPerReq}&sort={config.sorting}&order={'asc' if config.ascending else 'desc'}"
     return _request('get', 'json', 'getRecChannelsRaw', url, config)

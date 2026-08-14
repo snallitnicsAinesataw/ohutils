@@ -5,6 +5,8 @@ import os
 
 @dataclass
 class Config:
+    APIBase: url = "https://api.ottohub.cn/"
+
     password: bytes = field(default_factory=lambda: b'example_password', repr=False, compare=False)
     salt: bytes = field(default_factory=lambda: b'0123456789abcdef', repr=False, compare=False)
 
@@ -40,6 +42,8 @@ class Config:
     msgPerReq: int = 50
     modLogPerReq: int = 20
     videoPerReq: int = 20
+    tagsPerReq: int = 12
+    seigaPerReq: int = 20
 
     savePath: str = 'D:\\_ARCHIVE\\E_ABOVE5000\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ottosave\\'
@@ -59,6 +63,7 @@ class Config:
 
     sorting: str = "created_at"
     ascending: bool = False
+    gore: bool = True
 
     @classmethod
     def fromDict(cls, d: dict):

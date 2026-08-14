@@ -34,3 +34,7 @@ VT_GAME = 5
 VT_NOSTALGIA = 6
 VT_MUSIC = 7
 DEFAULT_TS = 946656000
+SG_DAILY = 'daily'
+SG_WEEKLY = 'weekly'
+SG_MONTHLY = 'monthly'
+SG_ALL = 'total'

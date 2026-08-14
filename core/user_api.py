@@ -9,7 +9,7 @@ import time
 def getUserDetailRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://www.ottohub.cn/api/user/{uid}"
+    url = f"{config.APIBase}api/user/{uid}"
     return _request('get', 'json', 'getUserDetailRaw', url, config)
 
 
@@ -17,7 +17,7 @@ def getUserDetailRaw(uid: int, config: Config = None) -> dict:
 def getUserVideoCollectionsRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/collection/videos/collections?uid={uid}"
+    url = f"{config.APIBase}api/collection/videos/collections?uid={uid}"
     return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
 
 
@@ -25,7 +25,7 @@ def getUserVideoCollectionsRaw(uid: int, config: Config = None) -> dict:
 def getUserBlogCollectionsRaw(uid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/collection/blogs/collections?uid={uid}"
+    url = f"{config.APIBase}api/collection/blogs/collections?uid={uid}"
     return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
 
 
@@ -33,7 +33,7 @@ def getUserBlogCollectionsRaw(uid: int, config: Config = None) -> dict:
 def getUserBlogsRaw(uid: int, offset: int = 0, config: Config = None) -> list:
     if config is None:
         config = getGlobalConfig()
-    url = f"https://api.ottohub.cn/api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
+    url = f"{config.APIBase}api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
     return _request('get', 'json', 'getUserBlogsRaw', url, config).get("blog_list", [])
 
 
