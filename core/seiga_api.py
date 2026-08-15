@@ -1,5 +1,7 @@
+import time
 from .util import _request, startEnd
 from .config import Config, getGlobalConfig
+import os
 
 
 @startEnd
@@ -32,3 +34,24 @@ def getSeigaByTagsRaw(tag: str, offset: int = 0, config: Config = None) -> dict:
     url = f"{config.APIBase}api/seiga/search?tag={tag}&offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"
     return _request('get', 'json', 'getSeigaByTagsRaw', url, config)
 
+
+@startEnd
+def getSeigaDataRaw(sid: int, config: Config = None) -> dict:
+    if config is None:
+        config = getGlobalConfig()
+    url = f"{config.APIBase}api/seiga/{sid}"
+    return _request('get', 'json', 'getSeigaDetailRaw', url, config)
+
+
+@startEnd
+def downloadSeiga(sid: int, config: Config = None) -> bool:
+    if config is None:
+        config = getGlobalConfig()
+    all_seiga: list = getSeigaDataRaw(sid, config)['data']['pages']
+    for s in all_seiga:
+        pg, url = s['page_no'], s['original_url']
+        content = _request('get', 'content', 'downloadSeiga', url, config)
+        with open(os.path.join(config.seigaPath, config.seigaName%(sid, pg)), "wb") as f:
+            f.write(content)
+        time.sleep(1)
+    return True

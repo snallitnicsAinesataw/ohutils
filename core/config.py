@@ -5,7 +5,7 @@ import os
 
 @dataclass
 class Config:
-    APIBase: url = "https://api.ottohub.cn/"
+    APIBase: str = "https://api.ottohub.cn/"
 
     password: bytes = field(default_factory=lambda: b'example_password', repr=False, compare=False)
     salt: bytes = field(default_factory=lambda: b'0123456789abcdef', repr=False, compare=False)
@@ -45,7 +45,7 @@ class Config:
     tagsPerReq: int = 12
     seigaPerReq: int = 20
 
-    savePath: str = 'D:\\_ARCHIVE\\E_ABOVE5000\\'  # should be .\
+    savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ottosave\\'
     policy: str = 'merge'
     fileName: str = "ob%i.obarc"
@@ -53,11 +53,13 @@ class Config:
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
+    seigaPath: str = 'D:\\_ARCHIVE\\SEIGA\\'
+    seigaName: str = "sid%i_p%i.jpg"
 
     SQLName: str = "oh_general.db"
     useSQL: bool = False
 
-    chunkPath: str = 'D:\\_ARCHIVE\\E_ABOVE5000\\'  # should be .\
+    chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     blogChunkName: str = "chk_%i_%i_fl-%i.obchk"
     lookupTableBias: int = 32
 

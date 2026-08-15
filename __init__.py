@@ -21,6 +21,7 @@ CT_VIDEO = 'video'
 SORT_CREATED = "created_at"
 SORT_VIEWS = "view_count"
 SORT_LIKES = "like_count"
+LIMIT_DAY = 1
 LIMIT_WEEK = 7
 LIMIT_MONTH = 30
 LIMIT_QUARTER = 90
