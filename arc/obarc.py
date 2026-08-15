@@ -431,7 +431,9 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     if policy == 'merge':
         if verbose:
             print(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
-        old_blog = _loadObarc(version, bid, config)
+
+        ver = getVersion(os.path.join(config.savePath, config.fileName%bid))
+        old_blog = _loadObarc(ver, bid, config)
         merged_blog = mergeBlogData(old_blog, blog_data)
         merged_comments = mergeComments(old_blog.comments, comments)
         file_name = _writeObarc(version, bid, merged_blog, merged_comments, config)

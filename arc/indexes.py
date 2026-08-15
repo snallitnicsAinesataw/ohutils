@@ -27,10 +27,13 @@ def buildBlogIndex(config: Config = None):
                 'uid': blog.uid,
                 'ts': blog.timestamp,
                 'arcts': blog.arc_time,
-                'c_len': len(blog.comments),  # comment_count
+                'c_len': len(flattenComments(blog.comments)),  # comment_count
                 'ver': getVersion(path),
                 'size': os.path.getsize(path),
                 'title': blog.title,
+                'fav': blog.favorite_count,
+                'like': blog.like_count,
+                'view': blog.view_count
             }
         except Exception as e:
             if config.verbose:
