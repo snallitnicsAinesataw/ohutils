@@ -20,7 +20,8 @@ def parse_args():
     parser.add_argument("--bid", type=int, default=1)
     return parser.parse_args()
 
-cfg = Config.fromDict({'savePath':'D:\\_ARCHIVE\\DISP\\'})
+
+cfg = Config.fromDict({'savePath':'D:\\_ARCHIVE\\E_BELOW50000\\'})
 setGlobalConfig(cfg)
 args = parse_args()
 
@@ -76,7 +77,7 @@ class MainWin(QtWidgets.QMainWindow, viewer.UiMainWindow):
 
     def renderObarc(self):
         bid = self.numOid.value()
-        b_path = f'D:\\_ARCHIVE\\DISP\\ob{bid}.obarc'
+        b_path = f'D:\\_ARCHIVE\\E_BELOW50000\\ob{bid}.obarc'
         if not os.path.exists(b_path):
             succ, data = self.extractFrom7z(bid)
             if not succ:
