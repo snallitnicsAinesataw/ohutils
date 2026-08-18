@@ -182,9 +182,9 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
     if config is None:
         config = getGlobalConfig()
 
-    filename = os.path.join(config.savePath, config.fileName % bid)
+    filename = os.path.join(config.savePath, config.fileName.format(bid=bid))
     with open(filename, "wb") as f:
-        # 文件头 (32 字节)
+        # 文件头 (32字节)
         pub_ts = int(datetime.strptime(blog_data.get("time", "2000-1-1 00:00:00"), "%Y-%m-%d %H:%M:%S").timestamp())
         archive_ts = int(time.time())
         channel_id = blog_data.get("channel_id", 0)
@@ -293,11 +293,12 @@ def writeObarc4(bid: int, blog_data: dict, comments: List[Comment], config: Conf
 
 
 def writeObarc(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    """写入单篇博客的.obarc文件，使用最新的.obarc版本。"""
+    """写入单篇动态的.obarc文件，使用最新的.obarc版本。"""
     return _writeObarc(CURR_LATEST_OBARC_VER, bid, blog_data, comments, config)
 
 
 def mergeComments(old_list: List[Comment], new_list: List[Comment]) -> List[Comment]:
+    """合并两个评论列表，适用于更新数据。"""
     old_dict = {c.bcid: c for c in old_list}
     new_dict = {c.bcid: c for c in new_list}
     all_bcids = set(old_dict.keys()) | set(new_dict.keys())
@@ -355,34 +356,37 @@ def mergeCommentsDeep(old: Comment, new: Comment) -> Comment:
 
 
 def verifyObarc(filepath: str):
+    """验证指定路径的.obarc文件是否合法。"""
     with open(filepath, "rb") as f:
         # 读文件头
         header = f.read(32)
         if header[:5] != b'OBARC':
-            return False, "Magic mismatch"
+            return False, "wrong magic"
         if header[0x1F] != 0xA5:
-            return False, "Header end marker missing"
+            return False, "wrong header end marker"
         stored_crc = struct.unpack('<I', header[0x18:0x1C])[0]
         stored_size = struct.unpack('<Q', header[0x10:0x18])[0]
-        # 读取数据部分（从 0x20 开始到文件尾）
+        # 读取数据部分 (从0x20开始到文件尾)
         data = f.read()
         calc_crc = zlib.crc32(data) & 0xFFFFFFFF
         if calc_crc != stored_crc:
-            return False, f"CRC32 mismatch: stored {stored_crc:08X}, calc {calc_crc:08X}"
+            return False, f"wrong CRC32: stored {stored_crc:08X}, calc {calc_crc:08X}"
         # 检查文件大小
         f.seek(0, 2)
         actual_size = f.tell()
         if actual_size != stored_size:
-            return False, f"Size mismatch: stored {stored_size}, actual {actual_size}"
+            return False, f"wrong size: stored {stored_size}, actual {actual_size}"
+        if not data.endswith(bytes.fromhex("DCBDCCB2A0ADB9B7F0A8DCBFB5C4A8E8DCB7")):
+            return False, f"wrong file end marker"
         return True, "OK"
 
 
 def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
     if config is None:
         config = getGlobalConfig()
-    with open(os.path.join(config.savePath, config.fileName%bid), "rb") as f:
+    with open(os.path.join(config.savePath, config.fileName.format(bid=bid)), "rb") as f:
         header = f.read(32)
-        # 提取 channel_id（偏移 0x1C，2 字节）
+        # 提取channel_id (偏移0x1C, 2字节)
         if version >= 4:
             flags = struct.unpack('<B', header[6:7])[0]
         channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
@@ -420,9 +424,10 @@ def loadObarc4(bid: int, config: Config = None) -> BlogEntry:
 
 
 def loadObarc(bid: int, config: Config = None) -> BlogEntry:
+    """从config.savePath中加载.obarc文件。"""
     if config is None:
         config = getGlobalConfig()
-    filename = os.path.join(config.savePath, config.fileName%bid)
+    filename = os.path.join(config.savePath, config.fileName.format(bid=bid))
     ver = getVersion(filename)
     return _loadObarc(ver, bid, config)
 
@@ -432,7 +437,7 @@ def loadObarcBytes(f_bytes: bytes) -> BlogEntry:
     version = header[5]
     flags = header[6]
     tag_count = header[0x1E]
-    # 提取 channel_id（偏移 0x1C，2 字节）
+    # 提取channel_id (偏移0x1C, 2字节)
     channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
     timestamp = struct.unpack('<I', header[0x8:0xC])[0]
     archive_time = struct.unpack('<I', header[0xC:0x10])[0]
@@ -452,7 +457,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     if config is None:
         config = getGlobalConfig()
 
-    file_name = config.fileName%bid
+    file_name = config.fileName.format(bid=bid)
     file_path = os.path.join(config.savePath, file_name)
     verbose = config.verbose
     policy = config.policy
@@ -493,7 +498,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         if verbose:
             print(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
 
-        ver = getVersion(os.path.join(config.savePath, config.fileName%bid))
+        ver = getVersion(os.path.join(config.savePath, config.fileName.format(bid=bid)))
         old_blog = _loadObarc(ver, bid, config)
         merged_blog = mergeBlogData(old_blog, blog_data)
         merged_comments = mergeComments(old_blog.comments, comments)

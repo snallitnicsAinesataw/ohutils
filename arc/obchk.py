@@ -9,9 +9,10 @@ import time
 
 
 def serializeBlog(bid: int, config: Config = None) -> bytes:
+    """将指定bid的.obarc文件序列化。"""
     if config is None:
         config = getGlobalConfig()
-    with open(os.path.join(config.savePath, config.fileName % bid), "rb") as fp:
+    with open(os.path.join(config.savePath, config.fileName.format(bid=bid)), "rb") as fp:
         data = fp.read()
 
     new = data[5:24] + data[28:31] + data[32:-18]
@@ -19,6 +20,7 @@ def serializeBlog(bid: int, config: Config = None) -> bytes:
 
 
 def deserializeBlog(data: bytes) -> BlogEntry:
+    """反序列化二进制数据。"""
     # 解析头部
     version = data[0]
     flags = data[1]
@@ -42,8 +44,9 @@ def deserializeBlog(data: bytes) -> BlogEntry:
 
 def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = None, config: Config = None):
     """
-    flags:
-    idx 0: is encrypted
+    构建.obchk文件。
+    标志:
+    位0:加密
     """
     if config is None:
         config = getGlobalConfig()
@@ -68,15 +71,14 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
     if key is None and not flags[0]:
         raise ValueError("encryption without a key?")
 
-    filename = os.path.join(config.chunkPath, config.blogChunkName%(start, end, flag_int))
+    filename = os.path.join(config.chunkPath, config.blogChunkName.format(start=start, end=end, flag=flag_int))
     entries = []
     data_blocks = []
     data_bias = lookup_bias + (end - start + 1) * 8
     current_offset = data_bias
-    # print(f"[debug]{_MAGENTA}data_bias={data_bias}\033[0m")
 
     for bid in range(start, end + 1):
-        file = os.path.join(config.savePath, config.fileName % bid)
+        file = os.path.join(config.savePath, config.fileName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
             if config.verbose:
@@ -84,7 +86,6 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
             continue
         try:
             data = serializeBlog(bid)
-            # print(f"[debug]bid={bid}, current_offset={current_offset}, data_len={len(data)}\033[0m")
             entries.append(current_offset)
 
             if flags[0]:
@@ -126,7 +127,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         end_marker = bytes.fromhex("dc bd cc b2 e7 a2 d9 a4 f0 b1 b1 eb e6 e8 a8 dc bf b5 c4 a8 e8 dc b7")
         f.write(end_marker)
 
-        # 回填 size 和 CRC32
+        # 回填大小和CRC32
         total_size = f.tell()
 
     with open(filename, "r+b") as f:
@@ -134,14 +135,15 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         all_data = f.read()[:-27]  # exclude pack_time & end marker
         crc32 = zlib.crc32(all_data) & 0xFFFFFFFF
 
-        f.seek(0x0B)  # size 偏移
+        f.seek(0x0B)  # size偏移
         f.write(struct.pack('<Q', total_size))
-        f.seek(0x13)  # CRC32 偏移
+        f.seek(0x13)  # CRC32偏移
         f.write(struct.pack('<I', crc32))
     print(f"[buildChunk]Chunk built: {filename}")
 
 
 def loadChunk(filename: str, config: Config = None) -> dict[int, BlogEntry]:
+    """读取.obchk文件，返回{bid: BlogEntry}。"""
     if config is None:
         config = getGlobalConfig()
     with open(filename, "rb") as f:

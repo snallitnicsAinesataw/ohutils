@@ -48,19 +48,19 @@ class Config:
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ottosave\\'
     policy: str = 'merge'
-    fileName: str = "ob%i.obarc"
+    fileName: str = "ob{bid}.obarc"
     regexName: str = "ob*.obarc"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
     seigaPath: str = 'D:\\_ARCHIVE\\SEIGA\\'
-    seigaName: str = "sid%i_p%i.jpg"
+    seigaName: str = "sid{sid}_p{page}.jpg"
 
     SQLName: str = "oh_general.db"
     useSQL: bool = False
 
     chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
-    blogChunkName: str = "chk_%i_%i_fl-%i.obchk"
+    blogChunkName: str = "chk_{start}_{end}_fl-{flag}.obchk"
     lookupTableBias: int = 32
 
     sorting: str = "created_at"
@@ -70,7 +70,7 @@ class Config:
     blogToCommentDelay: tuple[float, float] = (1.0, 1.0)
     commentBatchDelay: tuple[float, float] = (0.0, 2.0)
     seigaDelay: tuple[float, float] = (0.5, 1.0)
-    userBlogsDelay: tuple[float, float] = (0.4, 0.8)
+    blogBatchDelay: tuple[float, float] = (0.4, 0.8)
     retryDelay: tuple[float, float] = (0.7, 1.1)
 
     @classmethod

@@ -55,7 +55,7 @@ def getAllUserBlog(uid: int, config: Config = None) -> list:
         if len(blog_list) < config.userBlogPerReq:
             break  # 最后一页没满，结束
         offset += config.userBlogPerReq
-        time.sleep(random.uniform(*config.userBlogsDelay))  # 限速
+        time.sleep(random.uniform(*config.blogBatchDelay))  # 限速
     if config.verbose:
         print(f"[getAllUserBlog]get {len(all_blogs)} blog(s) of ou{uid}")
     return all_blogs
