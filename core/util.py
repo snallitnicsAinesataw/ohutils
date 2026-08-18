@@ -1,3 +1,4 @@
+import random
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
 from typing import List, Union
@@ -26,6 +27,8 @@ class Comment:
     content: str
     reply_count: int
     replies: List['Comment']
+    is_pinned: bool  #
+    pin_order: int
 
     @classmethod
     def fromDict(cls, d: dict):
@@ -209,7 +212,9 @@ def dict2Comment(d: dict) -> Comment:
         timestamp=d['timestamp'],
         content=d['content'],
         reply_count=d['reply_count'],
-        replies=[dict2Comment(reply) for reply in d.get('replies', [])]
+        replies=[dict2Comment(reply) for reply in d.get('replies', [])],
+        is_pinned=bool(d['is_pinned']),
+        pin_order=bool(d['pin_order'])
     )
 
 
@@ -275,7 +280,7 @@ def _request(method: str, return_type: str,
                     f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
             if config.verbose:
                 print(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
-            time.sleep(0.5 * (attempt + 1))
+            time.sleep(random.uniform(*config.retryDelay))
     raise ExhaustedRetriesError(
         f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
         f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")

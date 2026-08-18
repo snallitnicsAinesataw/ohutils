@@ -4,7 +4,7 @@ from .config import Config, getGlobalConfig
 import requests
 import time
 from typing import List
-from random import random
+import random
 
 
 @startEnd
@@ -62,7 +62,9 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
                 timestamp=parseTime(c['time']),
                 content=c["content"],
                 reply_count=c["child_comment_num"],
-                replies=[]
+                replies=[],
+                is_pinned=bool(c["is_pinned"]),
+                pin_order=c["pin_order"]
             )
 
             if child_num > 0:
@@ -75,7 +77,7 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
         if len(comment_list) < config.commentPerReq:
             break
         offset += config.commentPerReq
-        time.sleep(random() * 2)
+        time.sleep(random.uniform(*config.commentBatchDelay))
     return all_comments
 
 

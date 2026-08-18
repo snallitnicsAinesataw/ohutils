@@ -11,7 +11,7 @@ from PyQt5.QtGui import QKeySequence, QTextDocument
 from PyQt5.QtWidgets import QTreeWidgetItem, QShortcut, QMessageBox, QStyledItemDelegate
 
 import viewer
-from ottosave.arc import loadObarcMerged, loadObarcBytesMerged
+from ottosave.arc import loadObarc, loadObarcBytes
 from ottosave import formatTime, Config, setGlobalConfig
 
 
@@ -86,9 +86,9 @@ class MainWin(QtWidgets.QMainWindow, viewer.UiMainWindow):
                                     f"请检查存档目录。")
                 return
             else:
-                b = loadObarcBytesMerged(data)
+                b = loadObarcBytes(data)
         else:
-            b = loadObarcMerged(bid)
+            b = loadObarc(bid)
         try:
             pf = formatTime(b.timestamp)
             af = formatTime(b.arc_time)

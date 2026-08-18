@@ -1,3 +1,4 @@
+import random
 import time
 from .util import _request, startEnd
 from .config import Config, getGlobalConfig
@@ -53,5 +54,5 @@ def downloadSeiga(sid: int, config: Config = None) -> bool:
         content = _request('get', 'content', 'downloadSeiga', url, config)
         with open(os.path.join(config.seigaPath, config.seigaName%(sid, pg)), "wb") as f:
             f.write(content)
-        time.sleep(1)
+        time.sleep(random.uniform(*config.seigaDelay))
     return True

@@ -1,3 +1,5 @@
+import random
+
 import requests
 from ..core.config import Config, getGlobalConfig
 from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData
@@ -10,7 +12,7 @@ import time
 import os
 from datetime import datetime
 from deprecated import deprecated
-CURR_LATEST_OBARC_VER = 4
+CURR_LATEST_OBARC_VER = 5
 
 
 def parseComment2(data: bytes, offset: int) -> tuple[Comment, int]:
@@ -24,7 +26,7 @@ def parseComment2(data: bytes, offset: int) -> tuple[Comment, int]:
     for _ in range(reply_count):
         reply, offset = parseComment2(data, offset)
         replies.append(reply)
-    return Comment(bcid, uid, ts, content, reply_count, replies), offset
+    return Comment(bcid, uid, ts, content, reply_count, replies, False, 0), offset
 
 
 def parseComment3(data: bytes, offset: int) -> tuple[Comment, int]:
@@ -32,18 +34,32 @@ def parseComment3(data: bytes, offset: int) -> tuple[Comment, int]:
     offset += 16
     content = data[offset:offset + content_len].decode('utf-8')
     offset += content_len
-    reply_count = struct.unpack_from('<I', data, offset)[0]  # 4 字节
+    reply_count = struct.unpack_from('<I', data, offset)[0]
     offset += 4
     replies = []
     for _ in range(reply_count):
         reply, offset = parseComment3(data, offset)
         replies.append(reply)
-    return Comment(bcid, uid, ts, content, reply_count, replies), offset
+    return Comment(bcid, uid, ts, content, reply_count, replies, False, 0), offset
 
 
 def parseComment4(data: bytes, offset: int) -> tuple[Comment, int]:
     """v4评论格式与v3一致，可以直接使用parseComment3"""
     return parseComment3(data, offset)
+
+
+def parseComment5(data: bytes, offset: int) -> tuple[Comment, int]:
+    bcid, uid, ts, pin, content_len = struct.unpack_from('<IIII I', data, offset)
+    offset += 20
+    content = data[offset:offset + content_len].decode('utf-8')
+    offset += content_len
+    reply_count = struct.unpack_from('<I', data, offset)[0]
+    offset += 4
+    replies = []
+    for _ in range(reply_count):
+        reply, offset = parseComment5(data, offset)
+        replies.append(reply)
+    return Comment(bcid, uid, ts, content, reply_count, replies, bool(pin), pin), offset
 
 
 def parseBlog2(data: bytes, offset: int, channel_id: int, timestamp: int, arc_time: int) -> tuple[BlogEntry, int]:
@@ -124,6 +140,43 @@ def parseBlog4(data: bytes, flags: int,
                      b_type, tags, cr_type, is_gore, attached_vid), offset
 
 
+def parseBlog5(data: bytes, flags: int,
+               offset: int, channel_id: int, pub_ts: int, arc_ts: int, tag_count: int) -> tuple[BlogEntry, int]:
+    bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
+    offset += 14
+
+    is_gore = bool(flags & 2)
+    tags = []
+    for _ in range(tag_count):
+        tag_len = struct.unpack_from('<H', data, offset)[0]
+        offset += 2
+        tag = data[offset: offset + tag_len].decode('utf-8')
+        offset += tag_len
+        tags.append(tag)
+
+    attached_vid, cr_type, b_type, title_len = struct.unpack_from('<III H', data, offset)
+    offset += 14
+
+    title = data[offset:offset + title_len].decode('utf-8')
+    offset += title_len
+
+    content_len = struct.unpack_from('<I', data, offset)[0]
+    offset += 4
+    content = data[offset:offset + content_len].decode('utf-8')
+    offset += content_len
+
+    comment_count = struct.unpack_from('<H', data, offset)[0]
+    offset += 2
+
+    comments = []
+    for _ in range(comment_count):
+        c, offset = parseComment5(data, offset)
+        comments.append(c)
+
+    return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
+                     b_type, tags, cr_type, is_gore, attached_vid), offset
+
+
 def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
     """写入单个动态的.obarc文件"""
     if config is None:
@@ -135,7 +188,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         pub_ts = int(datetime.strptime(blog_data.get("time", "2000-1-1 00:00:00"), "%Y-%m-%d %H:%M:%S").timestamp())
         archive_ts = int(time.time())
         channel_id = blog_data.get("channel_id", 0)
-        if version == 4:
+        if version >= 4:
             cr_type = blog_data.get("copyright_type", 0)
             b_type = blog_data.get("blog_type", 0)
             attached_vid = blog_data.get("attached_vid", 0)
@@ -151,7 +204,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
         f.write(struct.pack('<I', 0))  # 4B CRC32（占位）
         f.write(struct.pack('<H', channel_id))  # 2B 频道ID
-        f.write(struct.pack('<B', len(tags) if version == 4 else 0))  # 1B 保留 / tag数量(仅v4)
+        f.write(struct.pack('<B', len(tags) if version >= 4 else 0))  # 1B 保留 / tag数量(仅v4)
         f.write(b'\xA5')  # 1B 头结尾
 
         # 动态条目
@@ -164,7 +217,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(struct.pack('<H', int(blog_data.get("view_count", 0))))  # view
 
         # v4新增字段
-        if version == 4:
+        if version >= 4:
             for t in tags:
                 t_bytes = t.encode('utf-8')
                 f.write(struct.pack('<H', len(t_bytes)))
@@ -185,11 +238,13 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             f.write(struct.pack('<I', c.bcid))
             f.write(struct.pack('<I', c.uid))
             f.write(struct.pack('<I', c.timestamp))
+            if version == 5:  # v5新增字段pin_order
+                f.write(struct.pack('<I', c.pin_order))
             f.write(struct.pack('<I', len(content_bytes)))
             f.write(content_bytes)
             if version == 2:
                 f.write(struct.pack('<B', len(c.replies)))
-            elif version == 3 or version == 4:
+            elif version >= 3:
                 f.write(struct.pack('<I', len(c.replies)))
                 # v3及之后将reply_count改为4字节
             for reply in c.replies:
@@ -222,22 +277,22 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
     return filename
 
 
-@deprecated(reason="为向后兼容保留，请使用writeObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
 def writeObarc2(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
     return _writeObarc(2, bid, blog_data, comments, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用writeObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
 def writeObarc3(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
     return _writeObarc(3, bid, blog_data, comments, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用writeObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
 def writeObarc4(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
     return _writeObarc(4, bid, blog_data, comments, config)
 
 
-def writeObarcMerged(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
+def writeObarc(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
     """写入单篇博客的.obarc文件，使用最新的.obarc版本。"""
     return _writeObarc(CURR_LATEST_OBARC_VER, bid, blog_data, comments, config)
 
@@ -261,9 +316,9 @@ def mergeComments(old_list: List[Comment], new_list: List[Comment]) -> List[Comm
 
 
 def mergeCommentsDeep(old: Comment, new: Comment) -> Comment:
-    """递归合并两条评论（bcid 相同）"""
+    """递归合并两条评论(bcid相同)"""
     if old.bcid != new.bcid:
-        raise ValueError("bcid 不匹配")
+        raise ValueError("bcid不匹配")
 
         # 使用新评论的元数据
     merged = Comment(
@@ -272,7 +327,9 @@ def mergeCommentsDeep(old: Comment, new: Comment) -> Comment:
         timestamp=new.timestamp,
         content=new.content,
         reply_count=new.reply_count,
-        replies=[]
+        replies=[],
+        is_pinned=new.is_pinned,
+        pin_order=new.pin_order
     )
 
     # 递归合并子回复
@@ -292,7 +349,7 @@ def mergeCommentsDeep(old: Comment, new: Comment) -> Comment:
             # 只有旧有 -> 保留旧的
             merged.replies.append(old_replies[bcid])
 
-    # 按 bcid 或时间排序
+    # 按bcid或时间排序
     merged.replies.sort(key=lambda r: r.timestamp)
     return merged
 
@@ -326,12 +383,12 @@ def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
     with open(os.path.join(config.savePath, config.fileName%bid), "rb") as f:
         header = f.read(32)
         # 提取 channel_id（偏移 0x1C，2 字节）
-        if version == 4:
+        if version >= 4:
             flags = struct.unpack('<B', header[6:7])[0]
         channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
         timestamp = struct.unpack('<I', header[0x8:0xC])[0]
         archive_time = struct.unpack('<I', header[0xC:0x10])[0]
-        if version == 4:
+        if version >= 4:
             tag_count = struct.unpack('<B', header[0x1E:0x1F])[0]
         # 跳过文件头，读取数据部分
         data = f.read()
@@ -340,27 +397,29 @@ def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
         blog, _ = parseBlog2(data, 0, channel_id, timestamp, archive_time)
     elif version == 3:
         blog, _ = parseBlog3(data, 0, channel_id, timestamp, archive_time)
-    else:
+    elif version == 4:
         blog, _ = parseBlog4(data, flags, 0, channel_id, timestamp, archive_time, tag_count)
+    else:
+        blog, _ = parseBlog5(data, flags, 0, channel_id, timestamp, archive_time, tag_count)
     return blog
 
 
-@deprecated(reason="为向后兼容保留，请使用loadObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
 def loadObarc2(bid: int, config: Config = None) -> BlogEntry:
     return _loadObarc(2, bid, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用loadObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
 def loadObarc3(bid: int, config: Config = None) -> BlogEntry:
     return _loadObarc(3, bid, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用loadObarcMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
 def loadObarc4(bid: int, config: Config = None) -> BlogEntry:
     return _loadObarc(4, bid, config)
 
 
-def loadObarcMerged(bid: int, config: Config = None) -> BlogEntry:
+def loadObarc(bid: int, config: Config = None) -> BlogEntry:
     if config is None:
         config = getGlobalConfig()
     filename = os.path.join(config.savePath, config.fileName%bid)
@@ -368,7 +427,7 @@ def loadObarcMerged(bid: int, config: Config = None) -> BlogEntry:
     return _loadObarc(ver, bid, config)
 
 
-def loadObarcBytesMerged(f_bytes: bytes) -> BlogEntry:
+def loadObarcBytes(f_bytes: bytes) -> BlogEntry:
     header = f_bytes[:32]
     version = header[5]
     flags = header[6]
@@ -377,7 +436,9 @@ def loadObarcBytesMerged(f_bytes: bytes) -> BlogEntry:
     channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
     timestamp = struct.unpack('<I', header[0x8:0xC])[0]
     archive_time = struct.unpack('<I', header[0xC:0x10])[0]
-    if version == 4:
+    if version == 5:
+        blog, _ = parseBlog5(f_bytes[32:], flags, 0, channel_id, timestamp, archive_time, tag_count)
+    elif version == 4:
         blog, _ = parseBlog4(f_bytes[32:], flags, 0, channel_id, timestamp, archive_time, tag_count)
     elif version == 3:
         blog, _ = parseBlog3(f_bytes[32:], 0, channel_id, timestamp, archive_time)
@@ -413,7 +474,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         if verbose:
             print(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
     else:
-        time.sleep(1)
+        time.sleep(random.uniform(*config.blogToCommentDelay))
         if verbose:
             print(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
         try:
@@ -442,22 +503,22 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     return file_path, True
 
 
-@deprecated(reason="为向后兼容保留，请使用archiveBlogMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
 def archiveBlog2(bid: int, config: Config = None) -> Tuple[str, bool]:
     return _archiveBlog(2, bid, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用archiveBlogMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
 def archiveBlog3(bid: int, config: Config = None) -> Tuple[str, bool]:
     return _archiveBlog(3, bid, config)
 
 
-@deprecated(reason="为向后兼容保留，请使用archiveBlogMerged()", version='0.5')
+@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
 def archiveBlog4(bid: int, config: Config = None) -> Tuple[str, bool]:
     return _archiveBlog(4, bid, config)
 
 
-def archiveBlogMerged(bid: int, config: Config = None) -> Tuple[str, bool]:
+def archiveBlog(bid: int, config: Config = None) -> Tuple[str, bool]:
     """存储动态至.obarc文件。
     config.policy: keep(不动原存档), override(覆盖), merge(混合新数据与原数据)"""
     return _archiveBlog(CURR_LATEST_OBARC_VER, bid, config)

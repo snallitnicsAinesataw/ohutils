@@ -18,7 +18,7 @@ def serializeBlog(bid: int, config: Config = None) -> bytes:
     return new
 
 
-def deserializeBlogMerged(data: bytes) -> BlogEntry:
+def deserializeBlog(data: bytes) -> BlogEntry:
     # 解析头部
     version = data[0]
     flags = data[1]
@@ -29,8 +29,9 @@ def deserializeBlogMerged(data: bytes) -> BlogEntry:
 
     # 数据区从第 22 字节开始
     blog_data = data[22:]
-
-    if version == 4:
+    if version == 5:
+        blog, _ = parseBlog4(blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
+    elif version == 4:
         blog, _ = parseBlog4(blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
     elif version == 3:
         blog, _ = parseBlog3(blog_data, 0, channel_id, pub_ts, arc_ts)
@@ -171,6 +172,6 @@ def loadChunk(filename: str, config: Config = None) -> dict[int, BlogEntry]:
             data = f.read(data_len)
             if flags & 1:
                 data = decrypt(key, data)
-            blog = deserializeBlogMerged(data)
+            blog = deserializeBlog(data)
             result[bid] = blog
     return result

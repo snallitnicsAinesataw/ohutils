@@ -67,6 +67,12 @@ class Config:
     ascending: bool = False
     gore: bool = True
 
+    blogToCommentDelay: tuple[float, float] = (1.0, 1.0)
+    commentBatchDelay: tuple[float, float] = (0.0, 2.0)
+    seigaDelay: tuple[float, float] = (0.5, 1.0)
+    userBlogsDelay: tuple[float, float] = (0.4, 0.8)
+    retryDelay: tuple[float, float] = (0.7, 1.1)
+
     @classmethod
     def fromDict(cls, d: dict):
         """从字典导入配置"""
