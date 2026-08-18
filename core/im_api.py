@@ -4,6 +4,7 @@ from .config import Config, getGlobalConfig
 
 @startEnd
 def getUnreadMsgNumRaw(config: Config = None) -> dict:
+    """获取未读消息数。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/im/unread-count?token={config.token}"
@@ -12,6 +13,7 @@ def getUnreadMsgNumRaw(config: Config = None) -> dict:
 
 @startEnd
 def getUnreadModerationNumRaw(config: Config = None) -> dict:
+    """获取未读审核日志数。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/moderation/logs/unread-count?token={config.token}"
@@ -20,6 +22,7 @@ def getUnreadModerationNumRaw(config: Config = None) -> dict:
 
 @startEnd
 def getUnreadCounts(config: Config = None) -> dict:
+    """获取未读消息数。需要token。"""
     if config is None:
         config = getGlobalConfig()
     im = getUnreadMsgNumRaw(config)['data']['new_message_num']
@@ -32,6 +35,7 @@ def getUnreadCounts(config: Config = None) -> dict:
 
 @startEnd
 def getIMRaw(receiver: int, offset: int = 0, config: Config = None) -> dict:
+    """获取与指定uid的私信记录。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/im/conversations/{receiver}/messages?offset={offset}"\
@@ -41,6 +45,7 @@ def getIMRaw(receiver: int, offset: int = 0, config: Config = None) -> dict:
 
 @startEnd
 def getModerationRaw(offset: int = 0, config: Config = None) -> dict:
+    """获取审核日志。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/moderation/logs?offset={offset}&num={config.modLogPerReq}&token={config.token}"
@@ -49,7 +54,8 @@ def getModerationRaw(offset: int = 0, config: Config = None) -> dict:
 
 @startEnd
 def sendIM(receiver: int, msg: str, config: Config = None):
+    """发送私信至指定uid。需要token。"""
     if config is None:
         config = getGlobalConfig()
     data = {'token': config.token, 'receiver': receiver, 'message': msg}
-    return _postJson('post', 'json', "sendIM", "https://www.ottohub.cn/api/im/messages", config, data)
+    return _request('post', 'json', "sendIM", f"{config.APIBase}api/im/messages", config, data)

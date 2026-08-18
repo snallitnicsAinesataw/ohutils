@@ -12,7 +12,7 @@ _MAP = {1: ('oh_user', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEX
         2: ('oh_blog', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
         blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER''', 'bid'),
-        3: ('oh_comment', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
+        3: ('oh_obc', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
         timestamp INTEGER, content TEXT, reply_count INTEGER DEFAULT 0''', 'bcid'),
         6: ()}
 

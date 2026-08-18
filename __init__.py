@@ -8,11 +8,11 @@ from .core.util import (
     dict2Comment, getVersion,
     flattenComments,
     mergeBlogEntry,
-    appSim,
+    appSim, useConfig,
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
 
-ver = "0.5"
+__version__ = "0.5.0"
 F_ENCRYPT = 1
 F_GORE = 2
 CT_ALL = 'all'

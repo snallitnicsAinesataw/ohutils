@@ -239,12 +239,14 @@ def _request(method: str, return_type: str,
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
                 print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
+            headers = config.headers
+            headers['User-Agent'] = headers['User-Agent'] + ' ottosave/0.5.0'  # 水印，大概
             if method == 'get':
-                resp = requests.get(url, timeout=timeout, headers=config.headers)
+                resp = requests.get(url, timeout=timeout, headers=headers)
             elif method == 'post':
-                resp = requests.post(url, timeout=timeout, headers=config.headers, json=data)
+                resp = requests.post(url, timeout=timeout, headers=headers, json=data)
             elif method == 'put':
-                resp = requests.put(url, timeout=timeout, headers=config.headers, data=data)
+                resp = requests.put(url, timeout=timeout, headers=headers, data=data)
             else:
                 raise MethodNotAllowed
             resp.raise_for_status()
@@ -348,3 +350,15 @@ def appSim(config: Config = None):
         # 恢复配置
         config.headers = orig_headers
         config.alwaysUseToken = orig_token
+
+
+@contextmanager
+def useConfig(config: Config):
+    """使用给定的config。
+    此函数的优先级低于在函数调用时显式传递的config=...参数，但高于setGlobalConfig(...)。"""
+    orig_cfg = getGlobalConfig()
+    setGlobalConfig(config)
+    try:
+        yield config
+    finally:
+        setGlobalConfig(orig_cfg)  # 恢复配置
