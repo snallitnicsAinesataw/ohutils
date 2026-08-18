@@ -21,6 +21,24 @@ def getUnreadModerationNumRaw(config: Config = None) -> dict:
 
 
 @startEnd
+def getCommentRepliesNumRaw(config: Config = None) -> dict:
+    """获取｢评论我的｣消息数。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"{config.APIBase}api/im/comment-replies/unread-count?token={config.token}"
+    return _request('get', 'json', 'getCommentRepliesNumRaw', url, config)
+
+
+@startEnd
+def getMentionsNumRaw(config: Config = None) -> dict:
+    """获取｢@我的｣消息数。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"{config.APIBase}api/im/mentions/unread-count?token={config.token}"
+    return _request('get', 'json', 'getMentionsNumRaw', url, config)
+
+
+@startEnd
 def getUnreadCounts(config: Config = None) -> dict:
     """获取未读消息数。需要token。"""
     if config is None:
@@ -29,7 +47,11 @@ def getUnreadCounts(config: Config = None) -> dict:
     mod = getUnreadModerationNumRaw(config)['data']
     mod['unread_moderation'] = mod['unread_count']
     del mod['unread_count']
-    mod['unread_im'] = im
+    mod['unread_im'] = int(im)
+    mention = getMentionsNumRaw(config)['data']['unread_count']
+    mod['unread_mentions'] = mention
+    repl = getCommentRepliesNumRaw(config)['data']['unread_count']
+    mod['unread_replies'] = repl
     return mod
 
 
@@ -59,3 +81,21 @@ def sendIM(receiver: int, msg: str, config: Config = None):
         config = getGlobalConfig()
     data = {'token': config.token, 'receiver': receiver, 'message': msg}
     return _request('post', 'json', "sendIM", f"{config.APIBase}api/im/messages", config, data)
+
+
+@startEnd
+def getCommentRepliesRaw(offset: int = 0, num: int = 20, config: Config = None) -> dict:
+    """获取｢评论我的｣消息。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f'{config.APIBase}api/im/comment-replies?offset={offset}&num={num}&token={config.token}'
+    return _request('get', 'json', 'getCommentRepliesRaw', url, config=config)
+
+
+@startEnd
+def getMentionsRaw(offset: int = 0, num: int = 20, config: Config = None) -> dict:
+    """获取｢@我的｣消息。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f'{config.APIBase}api/im/mentions?offset={offset}&num={num}&token={config.token}'
+    return _request('get', 'json', 'getMentionsRaw', url, config=config)
