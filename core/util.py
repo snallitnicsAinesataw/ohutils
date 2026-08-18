@@ -32,7 +32,7 @@ class Comment:
 
     @classmethod
     def fromDict(cls, d: dict):
-        """从字典导入
+        """从字典导入。
         replies会保留为list[dict]，可以使用dict2Comment(...)"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
@@ -51,7 +51,7 @@ class Danmaku:
 
     @classmethod
     def fromDict(cls, d: dict):
-        """从字典导入"""
+        """从字典导入。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
         return cls(**filtered)
@@ -81,7 +81,7 @@ class BlogEntry:
         return asdict(self)
 
     def toDictShallow(self):
-        """不转换comments: list[Comment] -> list[dict]"""
+        """不转换comments: list[Comment] -> list[dict]。"""
         return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
@@ -105,23 +105,24 @@ class VideoEntry:
 
     @classmethod
     def fromDict(cls, d: dict):
-        """从字典更新配置"""
+        """从字典更新配置。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
         return cls(**filtered)
 
 
 def parseTime(time_str: str) -> int:
-    """YYYY-MM-DD HH:MM:SS -> Unix timestamp"""
+    """YYYY-MM-DD HH:MM:SS -> Unix时间戳。"""
     return int(datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").timestamp())
 
 
 def formatTime(ts: int) -> str:
-    """Unix timestamp -> YYYY-MM-DD HH:MM:SS"""
+    """Unix时间戳 -> YYYY-MM-DD HH:MM:SS。"""
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def startEnd(func):
+    """装饰器。"""
     @wraps(func)
     def wrapper(*args, **kwargs):
         # 获取参数绑定
@@ -173,6 +174,7 @@ def startEnd(func):
 
 
 def genKey(pswd: bytes, salt: bytes = None) -> bytes:
+    """使用给定的密码和盐生成密钥。若salt未给出(None)则使用随机盐值。"""
     if salt is None:
         salt = os.urandom(16)
     return PBKDF2HMAC(
@@ -184,7 +186,7 @@ def genKey(pswd: bytes, salt: bytes = None) -> bytes:
 
 
 def encrypt(key: bytes, plaintext: bytes) -> bytes:
-    """encryption using aes256(GCM)."""
+    """使用AES256(GCM)的加密函数。"""
     iv = os.urandom(12)
     cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
     encryptor = cipher.encryptor()
@@ -194,7 +196,7 @@ def encrypt(key: bytes, plaintext: bytes) -> bytes:
 
 
 def decrypt(key: bytes, ciphertext: bytes) -> bytes:
-    """decryption using aes256(GCM)."""
+    """使用AES256(GCM)的解密函数。"""
     iv = ciphertext[:12]
     tag = ciphertext[12:28]
     actual_ciphertext = ciphertext[28:]
@@ -205,7 +207,7 @@ def decrypt(key: bytes, ciphertext: bytes) -> bytes:
 
 
 def dict2Comment(d: dict) -> Comment:
-    """此函数支持嵌套replies的转换"""
+    """此函数支持嵌套replies的转换。"""
     return Comment(
         bcid=d['bcid'],
         uid=d['uid'],
@@ -219,8 +221,9 @@ def dict2Comment(d: dict) -> Comment:
 
 
 def getVersion(path: str) -> int:
+    """获取文件的版本号。"""
     with open(path, "rb") as f:
-        f.read(5)  # OBARC
+        f.read(5)  # 魔数头
         return f.read(1)[0]  # 版本号
 
 
@@ -287,6 +290,7 @@ def _request(method: str, return_type: str,
 
 
 def flattenComments(recur_list: list[Comment]) -> list[Comment]:
+    """将评论树展平。"""
     res = []
     for c in recur_list:
         res.append(c)
@@ -296,7 +300,7 @@ def flattenComments(recur_list: list[Comment]) -> list[Comment]:
 
 
 def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
-    """合并两个 BlogEntry"""
+    """合并两个BlogEntry。"""
     return BlogEntry(
         bid=new.bid,
         uid=new.uid,
@@ -318,8 +322,8 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
 
 
 def mergeBlogData(old: BlogEntry, new: dict) -> dict:
-    """合并新旧数据，writeObarc的专用函数
-    我服了"""
+    """合并新旧数据，writeObarc的专用函数。
+    我服了。别用这个。"""
     return {
         'bid': int(new.get('bid', old.bid)),
         'uid': int(new.get('uid', old.uid)),
@@ -340,6 +344,7 @@ def mergeBlogData(old: BlogEntry, new: dict) -> dict:
 
 @contextmanager
 def appSim(config: Config = None):
+    """模拟由STCaoMei(ou5558)开发的OTTOHub App。"""
     if config is None:
         config = getGlobalConfig()
     # 保存原始配置
