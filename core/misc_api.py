@@ -7,7 +7,7 @@ import requests
 def getLegalDocsRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/system/legal-documents/"
+    url = f"https://{config.APIBase}api/system/legal-documents/"
     return _request('get', 'json', 'getLegalDocsRaw', url, config)
 
 
@@ -39,4 +39,4 @@ def getReviewSpec(config: Config = None) -> str:
 def getSlideshowRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    return _request('get', 'json', 'getSlideshowRaw', f'{config.APIBase}api/system/slideshow/', config)
+    return _request('get', 'json', 'getSlideshowRaw', f'https://{config.APIBase}api/system/slideshow/', config)

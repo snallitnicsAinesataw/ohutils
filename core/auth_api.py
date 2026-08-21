@@ -7,7 +7,7 @@ def loginRaw(uid_email: str, password: str, config: Config = None) -> dict:
     """登录。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/auth/login/"
+    url = f"https://{config.APIBase}api/auth/login/"
     return _request('post', 'json', 'loginRaw', url, config, {'uid_email': uid_email, "pw": password})
 
 
@@ -23,5 +23,5 @@ def checkinRaw(config: Config = None) -> dict:
     """签到。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/auth/sign-in/"
+    url = f"https://{config.APIBase}api/auth/sign-in/"
     return _request('post', 'json', 'signinRaw', url, config, {"token": config.token})

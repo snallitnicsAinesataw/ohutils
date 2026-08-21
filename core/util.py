@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
 from .config import Config, getGlobalConfig, setGlobalConfig
 from contextlib import contextmanager
-from .exceptions import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
+from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 
@@ -227,11 +227,10 @@ def getVersion(path: str) -> int:
         return f.read(1)[0]  # 版本号
 
 
-def _request(method: str, return_type: str,
-             f_name: str, url: str, config: Config = None,
-             data: dict = None, is_long: bool = False) -> Union[dict, bytes]:
-    """method: get / post / put
-    return_type: json / content"""
+def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content'],
+             f_name: str, url: str, config: Config = None, data: dict = None,
+             is_long: bool = False, is_chat: bool = False, chat_token: str = None
+             ) -> Union[dict, bytes]:
     if config is None:
         config = getGlobalConfig()
     retries = config.retries
@@ -239,7 +238,8 @@ def _request(method: str, return_type: str,
     timeout = config.uploadTimeout if is_long else config.timeout
     for attempt in range(retries):
         try:
-            if config.alwaysUseToken:
+            if config.alwaysUseToken and not is_chat:
+                # is_chat=True时此配置无效
                 parsed = urlparse(url)
                 query: dict[str, List[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
                 query['token'] = [config.token]
@@ -248,13 +248,17 @@ def _request(method: str, return_type: str,
             if config.verbose:
                 print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
             headers = config.headers
-            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.5.0'  # 水印，大概
+            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.6.0'  # 水印，大概
+            if chat_token is not None:
+                headers['Authorization'] = 'Bearer ' + chat_token
             if method == 'get':
                 resp = requests.get(url, timeout=timeout, headers=headers)
             elif method == 'post':
                 resp = requests.post(url, timeout=timeout, headers=headers, json=data)
             elif method == 'put':
                 resp = requests.put(url, timeout=timeout, headers=headers, data=data)
+            elif method == 'delete':
+                resp = requests.delete(url, timeout=timeout, headers=headers)
             else:
                 raise MethodNotAllowed
             resp.raise_for_status()

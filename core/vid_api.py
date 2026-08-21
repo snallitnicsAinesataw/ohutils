@@ -12,7 +12,7 @@ def getVideoDetailRaw(vid: int, config: Config = None) -> dict:
     """获取给定视频的数据。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/video/{vid}"
+    url = f"https://{config.APIBase}api/video/{vid}"
     return _request('get', 'json', 'getVideoDetailRaw', url, config).get('data', {})
 
 
@@ -21,7 +21,7 @@ def getAllDanmakuRaw(vid: int, config: Config = None) -> list:
     """获取给定视频的所有弹幕。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/danmaku/{vid}"
+    url = f"https://{config.APIBase}api/danmaku/{vid}"
     return _request('get', 'json', 'getVideoDetailRaw', url, config).get('data', [])
 
 
@@ -39,7 +39,7 @@ def getPopularVideosRaw(time_limit_day: int = 7, offset: int = 0, config: Config
     """获取视频｢热门榜｣。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/video/popular?time_limit={time_limit_day}&offset={offset}&num={config.videoPerReq}"
+    url = f"https://{config.APIBase}api/video/popular?time_limit={time_limit_day}&offset={offset}&num={config.videoPerReq}"
     return _request('get', 'json', "getPopularVideosRaw", url, config)
 
 
@@ -48,7 +48,7 @@ def getRandomVideosRaw(config: Config = None):
     """获取随机视频列表。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/video/random?num={config.videoPerReq}"
+    url = f"https://{config.APIBase}api/video/random?num={config.videoPerReq}"
     return _request('get', 'json', "getRandomVideosRaw", url, config)
 
 
@@ -57,5 +57,5 @@ def getLatestVideosRaw(type_: int, offset: int = 0, config: Config = None):
     """获取最新的视频列表。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/video/new?offset={offset}&type={type_}&num={config.videoPerReq}"
+    url = f"https://{config.APIBase}api/video/new?offset={offset}&type={type_}&num={config.videoPerReq}"
     return _request('get', 'json', "getLatestVideosRaw", url, config)

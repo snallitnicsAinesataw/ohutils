@@ -4,7 +4,7 @@ from ..core.config import Config, getGlobalConfig
 from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData
 from typing import List, Dict, Tuple, TypeVar
 from ..core.blog_api import getAllBlogComments, getBlogRaw
-from ..core.exceptions import BIDError
+from ..core.exception import BIDError
 import struct
 import zlib
 import time

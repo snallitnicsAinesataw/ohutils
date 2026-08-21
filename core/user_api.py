@@ -1,9 +1,9 @@
 import random
 
 from .util import _request, startEnd
-from .exceptions import OttoBaseException
+from .exception import OttoBaseException
 from .config import Config, getGlobalConfig
-from .exceptions import UIDError
+from .exception import UIDError
 import time
 
 
@@ -12,7 +12,7 @@ def getUserDetailRaw(uid: int, config: Config = None) -> dict:
     """获取指定uid的数据。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/user/{uid}"
+    url = f"https://{config.APIBase}api/user/{uid}"
     return _request('get', 'json', 'getUserDetailRaw', url, config)
 
 
@@ -21,7 +21,7 @@ def getUserVideoCollectionsRaw(uid: int, config: Config = None) -> dict:
     """获取指定uid的视频合集。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/collection/videos/collections?uid={uid}"
+    url = f"https://{config.APIBase}api/collection/videos/collections?uid={uid}"
     return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
 
 
@@ -30,7 +30,7 @@ def getUserBlogCollectionsRaw(uid: int, config: Config = None) -> dict:
     """获取指定uid的动态合集。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/collection/blogs/collections?uid={uid}"
+    url = f"https://{config.APIBase}api/collection/blogs/collections?uid={uid}"
     return _request('get', 'json', 'getUserBlogCollectionsRaw', url, config)
 
 
@@ -39,7 +39,7 @@ def getUserBlogsRaw(uid: int, offset: int = 0, config: Config = None) -> list:
     """获取指定uid的一组动态列表(不递归)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
+    url = f"https://{config.APIBase}api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
     return _request('get', 'json', 'getUserBlogsRaw', url, config).get("blog_list", [])
 
 
@@ -97,5 +97,5 @@ def isAudit(config: Config = None) -> bool:
     """测试config.token对应用户是否为审核。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/profile/is-audit?token={config.token}"
+    url = f"https://{config.APIBase}api/profile/is-audit?token={config.token}"
     return bool(_request('get', 'json', 'isAudit', url, config)['data']['is_audit'])

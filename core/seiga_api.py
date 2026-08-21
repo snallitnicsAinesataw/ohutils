@@ -11,7 +11,7 @@ def getPopularTagsRaw(offset: int = 0, config: Config = None) -> dict:
     """获取静画｢热门标签｣列表。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/tags/popular?offset={offset}&num={config.tagsPerReq}&is_gore={int(config.gore)}"
+    url = f"https://{config.APIBase}api/seiga/tags/popular?offset={offset}&num={config.tagsPerReq}&is_gore={int(config.gore)}"
     return _request('get', 'json', 'getPopularTagsRaw', url, config)
 
 
@@ -22,7 +22,7 @@ def getRankedSeigaRaw(offset: int = 0, is_doujin: bool = False, is_hall: bool = 
     time_limit支持的常量：ohutils.SG_*"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/ranking?offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"\
+    url = f"https://{config.APIBase}api/seiga/ranking?offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"\
           f"&is_fanwork={int(is_doujin)}&is_hall={int(is_hall)}&span={time_limit}"
     return _request('get', 'json', 'getRankedSeigaRaw', url, config)
 
@@ -32,7 +32,7 @@ def getSeigaByTagsRaw(tag: str, offset: int = 0, config: Config = None) -> dict:
     """获取指定标签下的静画。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/search?tag={tag}&offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"
+    url = f"https://{config.APIBase}api/seiga/search?tag={tag}&offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"
     return _request('get', 'json', 'getSeigaByTagsRaw', url, config)
 
 
@@ -41,7 +41,7 @@ def getSeigaDataRaw(sid: int, config: Config = None) -> dict:
     """获取指定sid的静画数据。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/{sid}"
+    url = f"https://{config.APIBase}api/seiga/{sid}"
     return _request('get', 'json', 'getSeigaDetailRaw', url, config)
 
 
@@ -65,7 +65,7 @@ def getSeigaTagsRaw(sid: int, config: Config = None) -> dict:
     """获取指定sid的静画标签。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/{sid}/tags"
+    url = f"https://{config.APIBase}api/seiga/{sid}/tags"
     return _request('get', 'json', 'getSeigaTagsRaw', url, config)
 
 
@@ -74,7 +74,7 @@ def getRelatedSeigaRaw(sid: int, offset: int = 0, config: Config = None) -> dict
     """获取指定sid的一组｢相关推荐｣(不递归)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/seiga/related/{sid}?offset={offset}&num={config.seigaPerReq}&is_gore={config.gore}"
+    url = f"https://{config.APIBase}api/seiga/related/{sid}?offset={offset}&num={config.seigaPerReq}&is_gore={config.gore}"
     return _request('get', 'json', 'getRelatedSeigaRaw', url, config)
 
 
@@ -83,7 +83,7 @@ def getSeigaCommentListRaw(sid: int, parent_scid = 0, offset: int = 0, config: C
     """获取指定sid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/comment/seigas/{sid}?parent_scid={parent_scid}&offset={offset}"\
+    url = f"https://{config.APIBase}api/comment/seigas/{sid}?parent_scid={parent_scid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={config.ascending}"
     return _request('get', 'json', 'getBlogCommentListRaw', url, config)
 
@@ -93,6 +93,6 @@ def getSeigaCollectionsRaw(sid: int, config: Config = None) -> dict:
     """获取指定sid所属的合集。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/collection/seigas/{sid}/collection/"
+    url = f"https://{config.APIBase}api/collection/seigas/{sid}/collection/"
     return _request('get', 'json', 'getSeigaCollectionsRaw', url, config)
 

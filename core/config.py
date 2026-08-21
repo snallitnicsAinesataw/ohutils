@@ -5,7 +5,8 @@ import os
 
 @dataclass
 class Config:
-    APIBase: str = "https://api.ottohub.cn/"
+    APIBase: str = "api.ottohub.cn/"
+    chatAPIBase: str = "api-chat.ottohub.cn/"
 
     password: bytes = field(default_factory=lambda: b'example_password', repr=False, compare=False)
     salt: bytes = field(default_factory=lambda: b'0123456789abcdef', repr=False, compare=False)
@@ -49,7 +50,7 @@ class Config:
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
     policy: str = 'merge'
     fileName: str = "ob{bid}.obarc"
-    regexName: str = "ob*.obarc"
+    blobName: str = "ob*.obarc"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"

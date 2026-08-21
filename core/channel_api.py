@@ -8,7 +8,7 @@ def getRecChannelsRaw(page: int = 1, config: Config = None) -> dict:
     """获取推荐的频道。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/channel?page={page}&limit={config.channelsPerReq}"\
+    url = f"https://{config.APIBase}api/channel?page={page}&limit={config.channelsPerReq}"\
           f"&sort={config.sorting}&order={'asc' if config.ascending else 'desc'}"
     return _request('get', 'json', 'getRecChannelsRaw', url, config)
 
@@ -18,7 +18,7 @@ def getChannelDetailRaw(cid: int, config: Config = None) -> dict:
     """获取特定频道的数据。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/channel/{cid}"
+    url = f"https://{config.APIBase}api/channel/{cid}"
     return _request('get', 'json', 'getChannelDetailRaw', url, config)
 
 
@@ -27,7 +27,7 @@ def getChannelSectionsRaw(cid: int, config: Config = None) -> dict:
     """获取特定频道的分区。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/channel/{cid}/sections"
+    url = f"https://{config.APIBase}api/channel/{cid}/sections"
     return _request('get', 'json', 'getChannelSectionsRaw', url, config)
 
 
@@ -36,7 +36,7 @@ def getChannelNoticesRaw(cid: int, config: Config = None) -> dict:
     """获取特定频道的公告。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/channel/{cid}/notices"
+    url = f"https://{config.APIBase}api/channel/{cid}/notices"
     return _request('get', 'json', 'getChannelNoticesRaw', url, config)
 
 
@@ -47,6 +47,6 @@ def getChannelContentRaw(cid: int, type_: Literal['all', 'blog', 'video'] = 'all
     type_支持的常量: ohutils.CT_*"""
     if config is None:
         config = getGlobalConfig()
-    url = f"{config.APIBase}api/channel/{cid}/content?type={type_}&page={page}"\
+    url = f"https://{config.APIBase}api/channel/{cid}/content?type={type_}&page={page}"\
           f"&limit={config.channelsPerReq}&sort={config.sorting}&order={'asc' if config.ascending else 'desc'}"
     return _request('get', 'json', 'getRecChannelsRaw', url, config)
