@@ -11,8 +11,8 @@ from PyQt5.QtGui import QKeySequence, QTextDocument
 from PyQt5.QtWidgets import QTreeWidgetItem, QShortcut, QMessageBox, QStyledItemDelegate
 
 import viewer
-from ottosave.arc import loadObarc, loadObarcBytes
-from ottosave import formatTime, Config, setGlobalConfig
+from ohutils.arc import loadObarc, loadObarcBytes
+from ohutils import formatTime, Config, setGlobalConfig
 
 
 def parse_args():

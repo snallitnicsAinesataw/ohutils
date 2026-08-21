@@ -46,7 +46,7 @@ class Config:
     seigaPerReq: int = 20
 
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
-    indexPath: str = 'E:\\pyfile\\small-projects\\ottosave\\'
+    indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
     policy: str = 'merge'
     fileName: str = "ob{bid}.obarc"
     regexName: str = "ob*.obarc"

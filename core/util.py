@@ -1,7 +1,8 @@
+from __future__ import annotations
 import random
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
-from typing import List, Union
+from typing import TypeVar, Generic, List, Union, Literal
 import inspect
 import os
 import sys
@@ -19,24 +20,21 @@ from .exceptions import APIError, mappings, MethodNotAllowed, ExhaustedRetriesEr
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 
+_T = TypeVar('_T', bound=Union['VideoEntry', 'BlogEntry'])
+
+
 @dataclass
-class Comment:
-    bcid: int
+class Comment(Generic[_T]):
+    cid: int
     uid: int
     timestamp: int
     content: str
     reply_count: int
-    replies: List['Comment']
-    is_pinned: bool  #
+    replies: List['Comment[_T]']
+    is_pinned: bool
     pin_order: int
-
-    @classmethod
-    def fromDict(cls, d: dict):
-        """从字典导入。
-        replies会保留为list[dict]，可以使用dict2Comment(...)"""
-        valid_keys = {f.name for f in fields(cls)}
-        filtered = {k: v for k, v in d.items() if k in valid_keys}
-        return cls(**filtered)
+    c_type: Literal['blog', 'video']
+    parent_cid: int = 0
 
 
 @dataclass
@@ -69,7 +67,7 @@ class BlogEntry:
     timestamp: int
     arc_time: int
     content: str
-    comments: List[Comment]
+    comments: List[Comment['BlogEntry']]
 
     blog_type: int = 0
     tags: List[str] = field(default_factory=list)
@@ -81,7 +79,7 @@ class BlogEntry:
         return asdict(self)
 
     def toDictShallow(self):
-        """不转换comments: list[Comment] -> list[dict]。"""
+        """不转换comments: list[Comment[BlogEntry]] -> list[dict]。"""
         return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
@@ -101,7 +99,7 @@ class VideoEntry:
     intro: str
     danmaku: List[Danmaku]
     comment_count: int
-    comments: List[Comment]
+    comments: List[Comment['VideoEntry']]
 
     @classmethod
     def fromDict(cls, d: dict):
@@ -147,7 +145,7 @@ def startEnd(func):
                 args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
                 cutted = args_str[:25]
                 print(f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                      f"start {config.colorGray}with args {cutted}{'...' if cutted!=args_str else ''}\033[0m")
+                      f"start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
             else:
                 print(f"[{config.colorGray}SE:\033[0m{func.__name__}]start")
             try:
@@ -173,8 +171,9 @@ def startEnd(func):
     return wrapper
 
 
-def genKey(pswd: bytes, salt: bytes = None) -> bytes:
-    """使用给定的密码和盐生成密钥。若salt未给出(None)则使用随机盐值。"""
+def genKey(pswd: bytes, salt: bytes = None) -> tuple[bytes, bytes]:
+    """使用给定的密码和盐生成密钥。若salt未给出(None)则使用随机盐值。
+    返回(key, salt)。"""
     if salt is None:
         salt = os.urandom(16)
     return PBKDF2HMAC(
@@ -182,7 +181,7 @@ def genKey(pswd: bytes, salt: bytes = None) -> bytes:
         length=32,  # 32 bytes for AES-256
         salt=salt,
         iterations=100000,
-    ).derive(pswd)
+    ).derive(pswd), salt
 
 
 def encrypt(key: bytes, plaintext: bytes) -> bytes:
@@ -206,17 +205,18 @@ def decrypt(key: bytes, ciphertext: bytes) -> bytes:
     return plaintext
 
 
-def dict2Comment(d: dict) -> Comment:
+def blogDict2Comment(d: dict) -> Comment:
     """此函数支持嵌套replies的转换。"""
     return Comment(
-        bcid=d['bcid'],
+        cid=d['bcid'],
         uid=d['uid'],
         timestamp=d['timestamp'],
         content=d['content'],
         reply_count=d['reply_count'],
-        replies=[dict2Comment(reply) for reply in d.get('replies', [])],
+        replies=[blogDict2Comment(reply) for reply in d.get('replies', [])],
         is_pinned=bool(d['is_pinned']),
-        pin_order=bool(d['pin_order'])
+        pin_order=bool(d['pin_order']),
+        c_type='blog'
     )
 
 
@@ -241,14 +241,14 @@ def _request(method: str, return_type: str,
         try:
             if config.alwaysUseToken:
                 parsed = urlparse(url)
-                query: dict[str, List[str]] = parse_qs(parsed.query) # noqa, PyCharm别扯
+                query: dict[str, List[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
                 query['token'] = [config.token]
                 new_query = urlencode(query, doseq=True)
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
                 print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
             headers = config.headers
-            headers['User-Agent'] = headers['User-Agent'] + ' ottosave/0.5.0'  # 水印，大概
+            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.5.0'  # 水印，大概
             if method == 'get':
                 resp = requests.get(url, timeout=timeout, headers=headers)
             elif method == 'post':
@@ -267,15 +267,14 @@ def _request(method: str, return_type: str,
             elif return_type == 'content':
                 return resp.content
         except requests.HTTPError as e:
-            if e.response.status_code == 400:
-                try:
-                    jsoned = e.response.json()
-                    stat, msg = jsoned.get("status"), jsoned.get('message')
-                    if stat != "success":
-                        raise mappings.get(msg, APIError)(msg)
-                except ValueError:
-                    # 如果响应不是JSON
-                    raise APIError(f"[{f_name}]{config.colorRed}400 error: {e.response.text}")
+            try:
+                jsoned = e.response.json()
+                stat, msg = jsoned.get("status"), jsoned.get('message')
+                if stat != "success":
+                    raise mappings.get(msg, APIError)(msg)
+            except ValueError:
+                # 如果响应不是JSON
+                raise APIError(f"[{f_name}]{config.colorRed}{e.response.status_code} error: {e.response.text}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
                 raise ExhaustedRetriesError(
@@ -295,7 +294,10 @@ def flattenComments(recur_list: list[Comment]) -> list[Comment]:
     for c in recur_list:
         res.append(c)
         if c.replies:
-            res.extend(flattenComments(c.replies))
+            flat = flattenComments(c.replies)
+            for rc in flat:
+                rc.parent_cid = c.cid
+            res.extend(flat)
     return res
 
 

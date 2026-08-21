@@ -3,6 +3,7 @@ import time
 from .util import _request, startEnd
 from .config import Config, getGlobalConfig
 import os
+from typing import Literal
 
 
 @startEnd
@@ -16,9 +17,9 @@ def getPopularTagsRaw(offset: int = 0, config: Config = None) -> dict:
 
 @startEnd
 def getRankedSeigaRaw(offset: int = 0, is_doujin: bool = False, is_hall: bool = False,
-                      time_limit: str = 'daily', config: Config = None) -> dict:
+                      time_limit: Literal['daily', 'weekly', 'monthly', 'all'] = 'daily', config: Config = None) -> dict:
     """获取静画｢按时段统计的排行榜｣。
-    time_limit支持的常量：ottosave.SG_*"""
+    time_limit支持的常量：ohutils.SG_*"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/seiga/ranking?offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"\
@@ -78,13 +79,13 @@ def getRelatedSeigaRaw(sid: int, offset: int = 0, config: Config = None) -> dict
 
 
 @startEnd
-def getCommentListRaw(sid: int, parent_scid = 0, offset: int = 0, config: Config = None) -> dict:
+def getSeigaCommentListRaw(sid: int, parent_scid = 0, offset: int = 0, config: Config = None) -> dict:
     """获取指定sid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/comment/seigas/{sid}?parent_scid={parent_scid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={config.ascending}"
-    return _request('get', 'json', 'getCommentListRaw', url, config)
+    return _request('get', 'json', 'getBlogCommentListRaw', url, config)
 
 
 @startEnd

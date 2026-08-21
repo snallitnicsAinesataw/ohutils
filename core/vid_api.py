@@ -4,7 +4,6 @@ from .util import (
     APIError,
     _request
 )
-import requests
 from .config import Config, getGlobalConfig
 
 
@@ -19,7 +18,7 @@ def getVideoDetailRaw(vid: int, config: Config = None) -> dict:
 
 @startEnd
 def getAllDanmakuRaw(vid: int, config: Config = None) -> list:
-    """获取给定视频的所有评论。"""
+    """获取给定视频的所有弹幕。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/danmaku/{vid}"
@@ -27,7 +26,7 @@ def getAllDanmakuRaw(vid: int, config: Config = None) -> list:
 
 
 def getAllDanmaku(vid: int) -> list[Danmaku]:
-    """获取给定视频的所有评论。返回格式是list[Danmaku]而不是dict。"""
+    """获取给定视频的所有弹幕。返回格式是list[Danmaku]而不是dict。"""
     resp = []
     ds = getAllDanmakuRaw(vid)
     for d in ds:

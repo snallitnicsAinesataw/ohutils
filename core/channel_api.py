@@ -1,5 +1,6 @@
 from .util import _request, startEnd
 from .config import Config, getGlobalConfig
+from typing import Literal
 
 
 @startEnd
@@ -40,9 +41,10 @@ def getChannelNoticesRaw(cid: int, config: Config = None) -> dict:
 
 
 @startEnd
-def getChannelContentRaw(cid: int, type_: str = 'all', page: int = 1, config: Config = None) -> dict:
+def getChannelContentRaw(cid: int, type_: Literal['all', 'blog', 'video'] = 'all',
+                         page: int = 1, config: Config = None) -> dict:
     """获取特定频道的内容(不递归)。
-    type_支持的常量: ottosave.CT_*"""
+    type_支持的常量: ohutils.CT_*"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/channel/{cid}/content?type={type_}&page={page}"\

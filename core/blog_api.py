@@ -26,16 +26,16 @@ def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
 
 
 @startEnd
-def getCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -> dict:
+def getBlogCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -> dict:
     """拉取指定bid的一组父评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}&num={config.commentPerReq}"
-    return _request('get', 'json', 'getCommentListRaw', url, config)
+    return _request('get', 'json', 'getBlogCommentListRaw', url, config)
 
 
 @startEnd
-def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> List[Comment]:
+def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) -> List[Comment]:
     """递归拉取指定bid的所有评论。"""
     if config is None:
         config = getGlobalConfig()
@@ -43,13 +43,13 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
     offset = 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[getAllComments]curr offset: {offset}")
+            print(f"[getAllBlogComments]curr offset: {offset}")
 
         try:
-            data = getCommentListRaw(bid, parent_bcid, offset, config)
+            data = getBlogCommentListRaw(bid, parent_bcid, offset, config)
         except ExhaustedRetriesError as e:
             if config.verbose:
-                print(f"[getAllComments]{config.colorRed}fail to get all comments: {e}")
+                print(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
 
         comment_list = data['data'].get("comment_list", [])
@@ -59,20 +59,21 @@ def getAllComments(bid: int, parent_bcid: int = 0, config: Config = None) -> Lis
         for c in comment_list:
             child_num = int(c.get("child_comment_num", 0))
             comment = Comment(
-                bcid=int(c["bcid"]),
+                cid=int(c["bcid"]),
                 uid=int(c["uid"]),
                 timestamp=parseTime(c['time']),
                 content=c["content"],
                 reply_count=c["child_comment_num"],
                 replies=[],
                 is_pinned=bool(c["is_pinned"]),
-                pin_order=c["pin_order"]
+                pin_order=c["pin_order"],
+                c_type='blog'
             )
 
             if child_num > 0:
                 if config.verbose:
-                    print(f"[getAllComments]Get replies of bcid{comment.bcid}...")
-                comment.replies = getAllComments(bid, comment.bcid, config)
+                    print(f"[getAllBlogComments]Get replies of bcid{comment.cid}...")
+                comment.replies = getAllBlogComments(bid, comment.cid, config)
 
             all_comments.append(comment)
 
@@ -192,3 +193,12 @@ def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Con
     if tags is not None:
         data['tag'] = tags
     return _request('put', 'json', 'editBlog', url, config, data)
+
+
+@startEnd
+def getBlogCollectionRaw(bid: int, config: Config = None):
+    """获取指定bid的动态合集。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"{config.APIBase}api/collection/blogs/{bid}/collection/"
+    return _request('get', 'json', 'getBlogCollectionRaw', url, config)

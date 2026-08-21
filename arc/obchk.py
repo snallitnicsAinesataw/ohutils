@@ -51,7 +51,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
     if config is None:
         config = getGlobalConfig()
     lookup_bias = config.lookupTableBias
-    key = genKey(config.password, config.salt)
+    key, _ = genKey(config.password, config.salt)
 
     if lookup_bias < 32:
         raise ValueError("lookup table overlap with header")
@@ -154,7 +154,7 @@ def loadChunk(filename: str, config: Config = None) -> dict[int, BlogEntry]:
         lookup_bias = struct.unpack('<I', header[7:11])[0]
 
         if flags & 1:
-            key = genKey(config.password, config.salt)
+            key, _ = genKey(config.password, config.salt)
 
         f.seek(lookup_bias)
         result = {}

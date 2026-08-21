@@ -5,7 +5,7 @@ from .core.util import (
     parseTime, formatTime,
     startEnd,
     genKey, encrypt, decrypt,
-    dict2Comment, getVersion,
+    blogDict2Comment, getVersion,
     flattenComments,
     mergeBlogEntry,
     appSim, useConfig,
@@ -28,10 +28,10 @@ LIMIT_QUARTER = 90
 VT_REPOST = 1
 VT_ORIGINAL = 2
 VT_OTHER = 0
-VT_GICHIKU = 1
-VT_VOCALOID = 3
+VT_KICHIKU = 1
+VT_HUMAN_VOCALOID = 3
 VT_SHOWCASE = 4 # "剧场"
-VT_GAME = 5
+VT_GAMES = 5
 VT_NOSTALGIA = 6
 VT_MUSIC = 7
 DEFAULT_TS = 946656000

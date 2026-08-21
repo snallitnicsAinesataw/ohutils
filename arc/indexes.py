@@ -55,7 +55,7 @@ def buildUserCommentIdx(config: Config = None):
                 uid = c.uid
                 index[uid] = index.get(uid, [])
                 index[uid].append({
-                    'bcid': c.bcid,
+                    'bcid': c.cid,
                     'bid': bid,
                     'timestamp': c.timestamp,
                     'content': c.content,
@@ -85,7 +85,7 @@ def buildOBCCommentIdx(config: Config = None):
         try:
             blog = loadObarc(bid, config)
             for c in flattenComments(blog.comments):
-                bcid = c.bcid
+                bcid = c.cid
                 index[bcid] = {
                     'uid': c.uid,
                     'bid': bid,
@@ -118,15 +118,15 @@ def buildAllIndexes(config: Config = None):
             blog = loadObarc(bid, config)
             # ob部分
             ob[bid] = {'bid': bid, 'uid': blog.uid, 'ts': blog.timestamp, 'arcts': blog.arc_time,
-                          'c_len': len(blog.comments), 'ver': getVersion(path), 'size': os.path.getsize(path),
-                          'title': blog.title}
+                       'c_len': len(blog.comments), 'ver': getVersion(path), 'size': os.path.getsize(path),
+                       'title': blog.title}
             # c_obc & c_ou部分
             for c in flattenComments(blog.comments):
-                uid, bcid = c.uid, c.bcid
+                uid, bcid = c.uid, c.cid
                 c_ou[uid] = c_ou.get(uid, [])
                 c_obc[bcid] = {'uid': c.uid, 'bid': bid, 'timestamp': c.timestamp, 'content': c.content,
                                'reply_count': c.reply_count}
-                c_ou[uid].append({'bcid': c.bcid, 'bid': bid, 'timestamp': c.timestamp, 'content': c.content,
+                c_ou[uid].append({'bcid': c.cid, 'bid': bid, 'timestamp': c.timestamp, 'content': c.content,
                                   'reply_count': c.reply_count})
         except Exception as e:
             if config.verbose:

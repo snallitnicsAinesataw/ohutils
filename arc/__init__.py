@@ -1,6 +1,6 @@
 from .obarc import (
     archiveBlog2, archiveBlog3, archiveBlog4, archiveBlog,
-    getGlobalConfig, getBlogRaw, getAllComments, getVersion,
+    getGlobalConfig, getBlogRaw, getAllBlogComments, getVersion,
     parseBlog2, parseBlog3, parseBlog4,
     parseComment2, parseComment3, parseComment4,
     loadObarc2, loadObarc3, loadObarc4, loadObarc,

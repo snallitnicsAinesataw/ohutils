@@ -1,10 +1,9 @@
 import random
-
 import requests
 from ..core.config import Config, getGlobalConfig
 from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData
-from typing import List, Dict, Tuple
-from ..core.blog_api import getAllComments, getBlogRaw
+from typing import List, Dict, Tuple, TypeVar
+from ..core.blog_api import getAllBlogComments, getBlogRaw
 from ..core.exceptions import BIDError
 import struct
 import zlib
@@ -13,6 +12,7 @@ import os
 from datetime import datetime
 from deprecated import deprecated
 CURR_LATEST_OBARC_VER = 5
+_T = TypeVar('_T')
 
 
 def parseComment2(data: bytes, offset: int) -> tuple[Comment, int]:
@@ -26,7 +26,7 @@ def parseComment2(data: bytes, offset: int) -> tuple[Comment, int]:
     for _ in range(reply_count):
         reply, offset = parseComment2(data, offset)
         replies.append(reply)
-    return Comment(bcid, uid, ts, content, reply_count, replies, False, 0), offset
+    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
 
 
 def parseComment3(data: bytes, offset: int) -> tuple[Comment, int]:
@@ -40,7 +40,7 @@ def parseComment3(data: bytes, offset: int) -> tuple[Comment, int]:
     for _ in range(reply_count):
         reply, offset = parseComment3(data, offset)
         replies.append(reply)
-    return Comment(bcid, uid, ts, content, reply_count, replies, False, 0), offset
+    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
 
 
 def parseComment4(data: bytes, offset: int) -> tuple[Comment, int]:
@@ -59,7 +59,7 @@ def parseComment5(data: bytes, offset: int) -> tuple[Comment, int]:
     for _ in range(reply_count):
         reply, offset = parseComment5(data, offset)
         replies.append(reply)
-    return Comment(bcid, uid, ts, content, reply_count, replies, bool(pin), pin), offset
+    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, bool(pin), pin, 'blog'), offset
 
 
 def parseBlog2(data: bytes, offset: int, channel_id: int, timestamp: int, arc_time: int) -> tuple[BlogEntry, int]:
@@ -235,7 +235,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         # 递归写评论
         def write_comment(c):
             content_bytes = c.content.encode('utf-8')
-            f.write(struct.pack('<I', c.bcid))
+            f.write(struct.pack('<I', c.cid))
             f.write(struct.pack('<I', c.uid))
             f.write(struct.pack('<I', c.timestamp))
             if version == 5:  # v5新增字段pin_order
@@ -297,10 +297,10 @@ def writeObarc(bid: int, blog_data: dict, comments: List[Comment], config: Confi
     return _writeObarc(CURR_LATEST_OBARC_VER, bid, blog_data, comments, config)
 
 
-def mergeComments(old_list: List[Comment], new_list: List[Comment]) -> List[Comment]:
+def mergeComments(old_list: List[Comment[_T]], new_list: List[Comment[_T]]) -> List[Comment[_T]]:
     """合并两个评论列表，适用于更新数据。"""
-    old_dict = {c.bcid: c for c in old_list}
-    new_dict = {c.bcid: c for c in new_list}
+    old_dict = {c.cid: c for c in old_list}
+    new_dict = {c.cid: c for c in new_list}
     all_bcids = set(old_dict.keys()) | set(new_dict.keys())
 
     merged = []
@@ -316,26 +316,26 @@ def mergeComments(old_list: List[Comment], new_list: List[Comment]) -> List[Comm
     return merged
 
 
-def mergeCommentsDeep(old: Comment, new: Comment) -> Comment:
-    """递归合并两条评论(bcid相同)"""
-    if old.bcid != new.bcid:
-        raise ValueError("bcid不匹配")
-
-        # 使用新评论的元数据
+def mergeCommentsDeep(old: Comment[_T], new: Comment[_T]) -> Comment[_T]:
+    """递归合并两条评论(cid相同)。"""
+    if old.cid != new.cid:
+        raise ValueError("cid不匹配")
+    # 使用新评论的元数据
     merged = Comment(
-        bcid=new.bcid,
+        cid=new.cid,
         uid=new.uid,
         timestamp=new.timestamp,
         content=new.content,
         reply_count=new.reply_count,
         replies=[],
         is_pinned=new.is_pinned,
-        pin_order=new.pin_order
+        pin_order=new.pin_order,
+        c_type=new.c_type
     )
 
     # 递归合并子回复
-    old_replies = {r.bcid: r for r in old.replies}
-    new_replies = {r.bcid: r for r in new.replies}
+    old_replies = {r.cid: r for r in old.replies}
+    new_replies = {r.cid: r for r in new.replies}
     all_bcids = set(old_replies.keys()) | set(new_replies.keys())
 
     for bcid in all_bcids:
@@ -483,7 +483,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         if verbose:
             print(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
         try:
-            comments = getAllComments(bid)
+            comments = getAllBlogComments(bid)
         except requests.RequestException as e:
             if verbose:
                 print(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')

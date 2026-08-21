@@ -1,7 +1,7 @@
 import glob, re
 # from collections import Counter
-from ottosave import parseTime, formatTime
-from ottosave.arc import loadBlogIndex
+from ohutils import parseTime, formatTime
+from ohutils.arc import loadBlogIndex
 from datetime import datetime
 index = loadBlogIndex()
 counts = {}
