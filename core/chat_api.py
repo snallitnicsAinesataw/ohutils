@@ -20,12 +20,14 @@ class ChatClient(websocket.WebSocketApp):
                  on_ping: Callable = None,
                  on_pong: Callable = None,
                  on_reconnect: Callable[[websocket.WebSocketApp], None] = None,
-                 on_chat: Callable[[websocket.WebSocketApp, dict], None] = None
+                 on_chat: Callable[[websocket.WebSocketApp, dict], None] = None,
+                 on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
                  ):
         """聊天室客户端。
         websocket.WebSocketApp的包装。
         on_chat: 收到聊天信息时的回调函数。
-        on_message: 收到所有信息时的回调函数。"""
+        on_message: 收到所有信息时的回调函数。
+        on_online_change：在收到｢在线人数更改｣时的回调函数。"""
         self._url = f'wss://{config.chatAPIBase}ws?room={room}&token={token}'
         self.ws = None
         self._token = token
@@ -39,6 +41,7 @@ class ChatClient(websocket.WebSocketApp):
         self._user_on_pong = on_pong
         self._user_on_reconnect = on_reconnect
         self._user_on_chat = on_chat
+        self._user_on_online_change = on_online_change
         self._pinged = False
         self._running = False
         super().__init__(self._url,
@@ -92,12 +95,18 @@ class ChatClient(websocket.WebSocketApp):
             self.role = data.get('role')
             print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
-            print(f'[ChatClient/msg:online]Online count:{data["count"]} @{time.time()}')
+            if self._user_on_online_change:
+                self._user_on_online_change(ws, data)
+            else:
+                print('[ChatClient/msg:online]'
+                      f'{self._config.colorGray}Online count:{data["count"]} @{round(time.time(), 3)}\033[0m')
         elif type_ == 'message':
             if self._user_on_chat:
                 self._user_on_chat(ws, data)
             else:
-                print(f'[ChatClient/msg:chat]id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}')
+                print('[ChatClient/msg:chat]'
+                      f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}'
+                      f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else '')
         elif type_ == 'message_deleted':
             print(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
         if self._user_on_message:
@@ -145,15 +154,19 @@ class ChatClient(websocket.WebSocketApp):
 
     def deleteMessage(self, msg_id: int):
         """删除聊天消息。"""
-        deleteMessage(msg_id, self._token, self._config)
+        return deleteMessage(msg_id, self._token, self._config)
 
     def blockUser(self, uid: int):
         """拉黑指定uid。"""
-        blockUser(uid, self._token, self._config)
+        return blockUser(uid, self._token, self._config)
 
     def unblockUser(self, uid: int):
         """取消拉黑指定uid。"""
-        unblockUser(uid, self._token, self._config)
+        return unblockUser(uid, self._token, self._config)
+
+    def getBlockUsers(self) -> list:
+        """获取已被拉黑的用户。"""
+        return getBlockUsers(self._token, self._config)
 
 
 @startEnd
@@ -206,17 +219,20 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
                 on_ping: Callable = None,
                 on_pong: Callable = None,
                 on_reconnect: Callable[[websocket.WebSocketApp], None] = None,
-                on_chat: Callable[[websocket.WebSocketApp, dict], None] = None
+                on_chat: Callable[[websocket.WebSocketApp, dict], None] = None,
+                on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
                 ) -> Union[tuple[ChatClient, Thread], ChatClient]:
     """自动获取chat_token并连接聊天室。需要token。
     threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread)。否则返回ChatClient。
     on_chat: 收到聊天信息时的回调函数。
-    on_message: 收到所有信息时的回调函数。"""
+    on_message: 收到所有信息时的回调函数。
+    on_online_change：在收到｢在线人数更改｣时的回调函数。"""
     if config is None:
         config = getGlobalConfig()
     token = getChatToken(config)
     client = ChatClient(token, room, config, on_open=on_open, on_reconnect=on_reconnect, on_message=on_message,
-                        on_error=on_error, on_ping=on_ping, on_chat=on_chat, on_close=on_close, on_pong=on_pong)
+                        on_error=on_error, on_ping=on_ping, on_chat=on_chat, on_close=on_close, on_pong=on_pong,
+                        on_online_change=on_online_change)
     if threaded:
         thread = threading.Thread(target=client.run_forever, daemon=True)
         thread.start()
@@ -250,3 +266,13 @@ def unblockUser(uid: int, chat_token: str, config: Config = None):
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/blocks/{uid}"
     return _request('delete', 'json', 'unblockUser', url, config, is_chat=True, chat_token=chat_token)
+
+
+@startEnd
+def getBlockUsers(chat_token: str, config: Config = None) -> list:
+    """获取已被拉黑的用户。需要chat_token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.chatAPIBase}api/blocks/"
+    data = _request('get', 'json', 'getBlockUsers', url, config, is_chat=True, chat_token=chat_token)
+    return data['data']['block_list']
