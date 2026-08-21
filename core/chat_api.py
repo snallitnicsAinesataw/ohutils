@@ -175,7 +175,7 @@ def getChatToken(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/exchange/"
-    d = _request('post', 'json', 'loginChatRaw', url, config, {'main_token': config.token}, is_chat=True)
+    d = _request('post', 'json', 'getChatToken', url, config, {'main_token': config.token}, is_chat=True)
     return d['data']['chat_token']
 
 
@@ -186,15 +186,6 @@ def meRaw(chat_token: str, config: Config = None):
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/me/"
     return _request('get', 'json', 'meRaw', url, config, is_chat=True, chat_token=chat_token)
-
-
-@startEnd
-def getBlockUsersRaw(chat_token: str, config: Config = None):
-    """获取chat_token对应用户的已屏蔽用户。"""
-    if config is None:
-        config = getGlobalConfig()
-    url = f"https://{config.chatAPIBase}api/blocks/"
-    return _request('get', 'json', 'getBlockUsersRaw', url, config, is_chat=True, chat_token=chat_token)
 
 
 @startEnd
@@ -223,7 +214,7 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
                 on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
                 ) -> Union[tuple[ChatClient, Thread], ChatClient]:
     """自动获取chat_token并连接聊天室。需要token。
-    threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread)。否则返回ChatClient。
+    threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread); 否则返回ChatClient，此时需要手动调用client.run_forever()。
     on_chat: 收到聊天信息时的回调函数。
     on_message: 收到所有信息时的回调函数。
     on_online_change：在收到｢在线人数更改｣时的回调函数。"""
