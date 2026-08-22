@@ -13,7 +13,7 @@ from .core.util import (
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 F_ENCRYPT = 1
 F_GORE = 2
 CT_ALL = 'all'
