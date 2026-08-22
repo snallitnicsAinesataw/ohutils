@@ -40,6 +40,7 @@ SG_DAILY = 'daily'
 SG_WEEKLY = 'weekly'
 SG_MONTHLY = 'monthly'
 SG_ALL = 'total'
+STAT_UNKNOWN = -1
 STAT_SELF = 0
 STAT_UNFOLLOWED = 1  # 未关注
 STAT_FOLLOWING = 2  # 关注了对方

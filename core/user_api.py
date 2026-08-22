@@ -95,7 +95,7 @@ def isAudit(config: Config = None) -> bool:
 @startEnd
 def getFollowersRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
     """获取指定uid的一组粉丝(不递归)。
-    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/fans/{uid}?offset={offset}&num={config.userPerReq}"
@@ -105,7 +105,7 @@ def getFollowersRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
 @startEnd
 def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
     """递归获取指定uid的所有粉丝。
-    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     all_ = _recur_request('getAllFollowers',
@@ -119,7 +119,7 @@ def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
 @startEnd
 def getFollowingsRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
     """获取指定uid的一组关注用户(不递归)。
-    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/list/{uid}?offset={offset}&num={config.userPerReq}"
@@ -129,7 +129,7 @@ def getFollowingsRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
 @startEnd
 def getAllFollowings(uid: int, config: Config = None) -> list[dict]:
     """递归获取指定uid的所有关注用户。
-    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     all_ = _recur_request('getAllFollowings',

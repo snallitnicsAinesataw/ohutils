@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 import yaml
 import os
 
@@ -95,6 +95,10 @@ class Config:
                 env_var = value[2:-1]
                 data[key] = os.environ.get(env_var, value)
         return cls(**data)
+
+    def replace(self, **changes):
+        """临时替换配置。其实就是dataclasses.replace()。"""
+        return replace(self, **changes)
 
 
 _DEFAULT_CONFIG = Config()
