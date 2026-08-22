@@ -26,16 +26,19 @@ def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
 
 
 @startEnd
-def getBlogCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -> dict:
-    """拉取指定bid的一组父评论(不递归)。"""
+def getBlogCommentListRaw(bid, parent_bcid: int = 0, offset: int = 0,
+                          cid_asc: bool = True, include_pinned: bool = True, config: Config = None) -> dict:
+    """拉取指定bid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}&num={config.commentPerReq}"
+    url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}"\
+          f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
     return _request('get', 'json', 'getBlogCommentListRaw', url, config)
 
 
 @startEnd
-def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) -> list[Comment]:
+def getAllBlogComments(bid: int, parent_bcid: int = 0,
+                       include_pinned: bool = True, config: Config = None) -> list[Comment]:
     """递归拉取指定bid的所有评论。"""
     if config is None:
         config = getGlobalConfig()
@@ -45,7 +48,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) ->
             print(f"[getAllBlogComments]curr offset: {offset}")
 
         try:
-            data = getBlogCommentListRaw(bid, parent_bcid, offset, config)
+            data = getBlogCommentListRaw(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
             if config.verbose:
                 print(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
@@ -72,7 +75,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) ->
             if child_num > 0:
                 if config.verbose:
                     print(f"[getAllBlogComments]Get replies of bcid{comment.cid}...")
-                comment.replies = getAllBlogComments(bid, comment.cid, config)
+                comment.replies = getAllBlogComments(bid, comment.cid, include_pinned, config)
             all_comments.append(comment)
 
         if len(comment_list) < config.commentPerReq:
