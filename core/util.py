@@ -2,7 +2,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
-from typing import TypeVar, Generic, List, Union, Literal
+from typing import TypeVar, Generic, List, Union, Literal, Callable
 import inspect
 import os
 import sys
@@ -20,20 +20,21 @@ from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesErr
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 
-_T = TypeVar('_T', bound=Union['VideoEntry', 'BlogEntry'])
+_TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
+_T = TypeVar('_T')
 
 
 @dataclass
-class Comment(Generic[_T]):
+class Comment(Generic[_TParent]):
     cid: int
     uid: int
     timestamp: int
     content: str
     reply_count: int
-    replies: List['Comment[_T]']
+    replies: List['Comment[_TParent]']
     is_pinned: bool
     pin_order: int
-    c_type: Literal['blog', 'video']
+    c_type: Literal['blog', 'video', 'seiga']
     parent_cid: int = 0
 
 
@@ -205,7 +206,7 @@ def decrypt(key: bytes, ciphertext: bytes) -> bytes:
     return plaintext
 
 
-def blogDict2Comment(d: dict) -> Comment:
+def dict2BlogComment(d: dict) -> Comment:
     """此函数支持嵌套replies的转换。"""
     return Comment(
         cid=d['bcid'],
@@ -213,7 +214,7 @@ def blogDict2Comment(d: dict) -> Comment:
         timestamp=d['timestamp'],
         content=d['content'],
         reply_count=d['reply_count'],
-        replies=[blogDict2Comment(reply) for reply in d.get('replies', [])],
+        replies=[dict2BlogComment(reply) for reply in d.get('replies', [])],
         is_pinned=bool(d['is_pinned']),
         pin_order=bool(d['pin_order']),
         c_type='blog'
@@ -378,3 +379,22 @@ def useConfig(config: Config):
         yield config
     finally:
         setGlobalConfig(orig_cfg)  # 恢复配置
+
+
+def _recur_request(f_name: str, recur_func: Callable[[int], list[_T]],
+                   limit: int, delay: tuple[float, float], config: Config = None) -> list[_T]:
+    if config is None:
+        config = getGlobalConfig()
+    all_, offset = [], 0
+    while True:
+        if offset != 0 and config.verbose:
+            print(f"[{f_name}]curr offset: {offset}")
+        list_ = recur_func(offset)
+        if not list_:
+            break
+        all_.extend(list_)
+        if len(list_) < limit:
+            break  # 最后一页没满，结束
+        offset += limit
+        time.sleep(random.uniform(*delay))  # 限速
+    return all_

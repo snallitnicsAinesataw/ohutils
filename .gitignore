@@ -20,3 +20,5 @@ rank.py
 read_gui.py
 viewer.py
 doc/
+_temp_user_blogs.json
+_temp_user_blogs2.json

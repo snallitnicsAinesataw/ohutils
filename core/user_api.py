@@ -1,6 +1,5 @@
 import random
-
-from .util import _request, startEnd
+from .util import _request, startEnd, _recur_request, BlogEntry
 from .exception import OttoBaseException
 from .config import Config, getGlobalConfig
 from .exception import UIDError
@@ -44,23 +43,13 @@ def getUserBlogsRaw(uid: int, offset: int = 0, config: Config = None) -> list:
 
 
 @startEnd
-def getAllUserBlog(uid: int, config: Config = None) -> list:
+def getAllUserBlog(uid: int, config: Config = None) -> list[dict]:
     """递归获取指定uid的所有动态。"""
     if config is None:
         config = getGlobalConfig()
-    all_blogs = []
-    offset = 0
-    while True:
-        if offset != 0 and config.verbose:
-            print(f"[getAllUserBlog]curr offset: {offset}")
-        blog_list = getUserBlogsRaw(uid, offset, config)
-        if not blog_list:
-            break
-        all_blogs.extend(blog_list)
-        if len(blog_list) < config.userBlogPerReq:
-            break  # 最后一页没满，结束
-        offset += config.userBlogPerReq
-        time.sleep(random.uniform(*config.blogBatchDelay))  # 限速
+    all_blogs = _recur_request('getAllUserBlog',
+                               lambda off: getUserBlogsRaw(uid, off, config),
+                               config.userBlogPerReq, config.blogBatchDelay, config)
     if config.verbose:
         print(f"[getAllUserBlog]get {len(all_blogs)} blog(s) of ou{uid}")
     return all_blogs
@@ -101,3 +90,51 @@ def isAudit(config: Config = None) -> bool:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/profile/is-audit?token={config.token}"
     return bool(_request('get', 'json', 'isAudit', url, config)['data']['is_audit'])
+
+
+@startEnd
+def getFollowersRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
+    """获取指定uid的一组粉丝(不递归)。
+    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/following/fans/{uid}?offset={offset}&num={config.userPerReq}"
+    return _request('get', 'json', 'getFollowersRaw', url, config)
+
+
+@startEnd
+def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
+    """递归获取指定uid的所有粉丝。
+    使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    if config is None:
+        config = getGlobalConfig()
+    all_ = _recur_request('getAllFollowers',
+                          lambda off: getFollowersRaw(uid, off, config)['data']['user_list'],
+                          config.userPerReq, config.userBatchDelay, config)
+    if config.verbose:
+        print(f"[getAllFollowers]get {len(all_)} follower(s) of ou{uid}")
+    return all_
+
+
+@startEnd
+def getFollowingsRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
+    """获取指定uid的一组关注用户(不递归)。
+    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/following/list/{uid}?offset={offset}&num={config.userPerReq}"
+    return _request('get', 'json', 'getFollowersRaw', url, config)
+
+
+@startEnd
+def getAllFollowings(uid: int, config: Config = None) -> list[dict]:
+    """递归获取指定uid的所有关注用户。
+    使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNFOLLOWED (1)."""
+    if config is None:
+        config = getGlobalConfig()
+    all_ = _recur_request('getAllFollowings',
+                          lambda off: getFollowersRaw(uid, off, config)['data']['user_list'],
+                          config.userPerReq, config.userBatchDelay, config)
+    if config.verbose:
+        print(f"[getAllFollowings]get {len(all_)} following(s) of ou{uid}")
+    return all_

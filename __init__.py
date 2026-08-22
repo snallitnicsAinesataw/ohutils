@@ -6,7 +6,7 @@ from .core.util import (
     parseTime, formatTime,
     startEnd,
     genKey, encrypt, decrypt,
-    blogDict2Comment, getVersion,
+    dict2BlogComment, getVersion,
     flattenComments,
     mergeBlogEntry,
     appSim, useConfig,
@@ -31,7 +31,7 @@ VT_ORIGINAL = 2
 VT_OTHER = 0
 VT_KICHIKU = 1
 VT_HUMAN_VOCALOID = 3
-VT_SHOWCASE = 4 # "剧场"
+VT_SHOWCASE = 4  # "剧场"
 VT_GAMES = 5
 VT_NOSTALGIA = 6
 VT_MUSIC = 7
@@ -40,3 +40,8 @@ SG_DAILY = 'daily'
 SG_WEEKLY = 'weekly'
 SG_MONTHLY = 'monthly'
 SG_ALL = 'total'
+STAT_SELF = 0
+STAT_UNFOLLOWED = 1  # 未关注
+STAT_FOLLOWING = 2  # 关注了对方
+STAT_FOLLOWED = 3  # 被对方关注
+STAT_MUTUAL = 4  # 互关

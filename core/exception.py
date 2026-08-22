@@ -293,6 +293,11 @@ class ExhaustedRetriesError(OttoBaseException):
     pass
 
 
+class NotInCollectionError(OttoBaseException):
+    """请求的对象不在合集中"""
+    pass
+
+
 mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
@@ -357,4 +362,6 @@ mappings = {
     'index_conflict': IndexConflictError,
     'not_channel_member': NotChannelMemberError,
     'Missing_extension_parameter': MissingExtensionParameterError,
+    'seiga_not_in_collection': NotInCollectionError, 'blog_not_in_collection': NotInCollectionError,
+    'video_not_in_collection': NotInCollectionError,
 }

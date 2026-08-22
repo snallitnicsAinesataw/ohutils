@@ -95,12 +95,12 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
             current_offset += len(data)
         except Exception as e:
             print(f"[buildChunk]Skip ob{bid}: {e}")
-    entries.append(current_offset)  # $$$
+    entries.append(current_offset)  # 此处
 
     lookup_table = b''
     for offset in entries:
         lookup_table += struct.pack('<Q', offset + 8)
-        # +8 because of an extra at the end of for loop (see $$$ above)
+        # +8因为for循环末尾的一个额外QW (上方)
 
     with open(filename, "wb") as f:
         # 文件头（占位）

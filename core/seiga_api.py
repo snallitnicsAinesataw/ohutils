@@ -37,7 +37,7 @@ def getSeigaByTagsRaw(tag: str, offset: int = 0, config: Config = None) -> dict:
 
 
 @startEnd
-def getSeigaDataRaw(sid: int, config: Config = None) -> dict:
+def getSeigaDetailRaw(sid: int, config: Config = None) -> dict:
     """获取指定sid的静画数据。"""
     if config is None:
         config = getGlobalConfig()
@@ -50,7 +50,7 @@ def downloadSeiga(sid: int, config: Config = None) -> bool:
     """下载指定sid的静画。"""
     if config is None:
         config = getGlobalConfig()
-    all_seiga: list = getSeigaDataRaw(sid, config)['data']['pages']
+    all_seiga: list = getSeigaDetailRaw(sid, config)['data']['pages']
     for s in all_seiga:
         pg, url = s['page_no'], s['original_url']
         content = _request('get', 'content', 'downloadSeiga', url, config)

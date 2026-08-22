@@ -45,6 +45,7 @@ class Config:
     videoPerReq: int = 20
     tagsPerReq: int = 12
     seigaPerReq: int = 20
+    userPerReq: int = 18
 
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
@@ -73,6 +74,7 @@ class Config:
     seigaDelay: tuple[float, float] = (0.5, 1.0)
     blogBatchDelay: tuple[float, float] = (0.4, 0.8)
     retryDelay: tuple[float, float] = (0.7, 1.1)
+    userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
     @classmethod
     def fromDict(cls, d: dict):

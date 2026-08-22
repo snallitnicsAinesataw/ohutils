@@ -1,4 +1,4 @@
-from .util import startEnd, Comment, parseTime, _request, APIError
+from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request
 from .exception import ExhaustedRetriesError
 from .config import Config, getGlobalConfig
 import requests
@@ -35,12 +35,11 @@ def getBlogCommentListRaw(bid, parent_bcid=0, offset=0, config: Config = None) -
 
 
 @startEnd
-def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) -> List[Comment]:
+def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) -> list[Comment]:
     """递归拉取指定bid的所有评论。"""
     if config is None:
         config = getGlobalConfig()
-    all_comments = []
-    offset = 0
+    all_comments, offset = [], 0
     while True:
         if offset != 0 and config.verbose:
             print(f"[getAllBlogComments]curr offset: {offset}")
@@ -74,7 +73,6 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0, config: Config = None) ->
                 if config.verbose:
                     print(f"[getAllBlogComments]Get replies of bcid{comment.cid}...")
                 comment.replies = getAllBlogComments(bid, comment.cid, config)
-
             all_comments.append(comment)
 
         if len(comment_list) < config.commentPerReq:
