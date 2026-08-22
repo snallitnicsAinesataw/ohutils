@@ -1,4 +1,5 @@
 from . import arc
+from .arc import sql_io
 from .core import *
 from .core.util import (
     Comment, BlogEntry, Danmaku, VideoEntry,
