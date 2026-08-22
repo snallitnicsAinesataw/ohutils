@@ -22,6 +22,7 @@ class ChatClient(websocket.WebSocketApp):
                  on_reconnect: Callable[[websocket.WebSocketApp], None] = None,
                  on_chat: Callable[[websocket.WebSocketApp, dict], None] = None,
                  on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
+                 heartbeat_interval: int = 30
                  ):
         """聊天室客户端。
         websocket.WebSocketApp的包装。
@@ -44,6 +45,7 @@ class ChatClient(websocket.WebSocketApp):
         self._user_on_online_change = on_online_change
         self._pinged = False
         self._running = False
+        self._beat_interval = heartbeat_interval
         super().__init__(self._url,
                          header=self._config.headers,
                          on_open=self._on_open,
@@ -63,7 +65,7 @@ class ChatClient(websocket.WebSocketApp):
 
         def heartbeat():
             while self._running:
-                time.sleep(30)
+                time.sleep(self._beat_interval)
                 if self._pinged:
                     print(f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
                 if self.sock and self.sock.connected:
@@ -86,7 +88,7 @@ class ChatClient(websocket.WebSocketApp):
             self.name = data.get('username')
             self.mute = data.get('mute')
             self.is_admin = bool(data.get('is_admin'))
-            self.announcement: dict = data.get('pinned_announcement')
+            self.announcement: Optional[dict] = data.get('pinned_announcement')
             self.role = data.get('role')
             print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
@@ -197,7 +199,7 @@ def getChatsRaw(config: Config = None) -> dict:
                     chat_token=chat_token if config.alwaysUseToken else None)
 
 
-def connectChat(room: str = 'main', config: Config = None, threaded: bool = True,
+def connectChat(room: str = 'main', config: Config = None, threaded: bool = True, beat_interval: int = 30,
                 on_open: Callable[[websocket.WebSocketApp], None] = None,
                 on_message: Callable[[websocket.WebSocketApp, dict], None] = None,
                 on_error: Callable[[websocket.WebSocketApp, Any], None] = None,
@@ -218,7 +220,7 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
     token = getChatToken(config)
     client = ChatClient(token, room, config, on_open=on_open, on_reconnect=on_reconnect, on_message=on_message,
                         on_error=on_error, on_ping=on_ping, on_chat=on_chat, on_close=on_close, on_pong=on_pong,
-                        on_online_change=on_online_change)
+                        on_online_change=on_online_change, heartbeat_interval=beat_interval)
     if threaded:
         thread = threading.Thread(target=client.run_forever, daemon=True)
         thread.start()

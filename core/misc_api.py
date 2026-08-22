@@ -39,4 +39,4 @@ def getReviewSpec(config: Config = None) -> str:
 def getSlideshowRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
-    return _request('get', 'json', 'getSlideshowRaw', f'https://{config.APIBase}api/system/slideshow/', config)
+    return _request('get', 'json', 'getSlideshowRaw', f'https://{config.APIBase}api/system/slideshow/active/', config)

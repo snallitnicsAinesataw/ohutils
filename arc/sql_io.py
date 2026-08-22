@@ -8,7 +8,7 @@ from dataclasses import asdict
 
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
 _MAP = {1: ('oh_user', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
-        sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover BLOB, video INTEGER, blog INTEGER,
+        sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover_h BLOB, cover_v BLOB, video INTEGER, blog INTEGER,
         seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER''', 'uid'),
         2: ('oh_blog', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
@@ -16,9 +16,11 @@ _MAP = {1: ('oh_user', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEX
         3: ('oh_obc', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'bcid'),
         6: ('oh_ovc', '''vcid INTEGER PRIMARY KEY NOT NULL, vid INTEGER, uid INTEGER, parent_vcid INTEGER DEFAULT 0,
-        pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid')
+        pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid'),
+        7: ('oh_osc', '''scid INTEGER PRIMARY KEY NOT NULL, sid INTEGER, uid INTEGER, parent_scid INTEGER DEFAULT 0, 
+        pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'scid'),
         }
-##########################################################################
+##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
 _MAP_USER = {'uid': ('uid', int), 'username': ('name', None), 'intro': ('intro', None),
              'time': ('create_ts', parseTime), 'sex': ('sex', None),
@@ -39,12 +41,17 @@ _MAP_BLOG_ENTRY = {'bid': ('bid', int), 'uid': ('uid', int), 'timestamp': ('pub_
                    'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
                    'title': ('title', None), 'content': ('content', None), 'tags': ('tags', lambda x: ','.join(x)),
                    'arc_time': ('arc_ts', None), 'channel_id': ('channel', None), 'is_gore': ('gore', int)}
-# Comment类没有bid/vid字段。
+# Comment类没有bid/vid/sid字段。
 _MAP_OBC = {'cid': ('bcid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts', None), 'content': ('content', None),
             'reply_count': ('reply_count', None), 'pin_order': ('pin_order', None), 'parent_cid': ('parent_bcid', None)}
 _MAP_OVC = {'cid': ('vcid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts', None), 'content': ('content', None),
             'reply_count': ('reply_count', None), 'pin_order': ('pin_order', None), 'parent_cid': ('parent_vcid', None)}
-_META_MAP = {1: _MAP_USER, 2: _MAP_BLOG, 3: _MAP_OBC_API, 4: _MAP_BLOG_ENTRY, 5: _MAP_OBC, 6: _MAP_OVC}
+_MAP_OSC = {'cid': ('scid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts', None), 'content': ('content', None),
+            'reply_count': ('reply_count', None), 'pin_order': ('pin_order', None), 'parent_cid': ('parent_scid', None)}
+
+_META_MAP = {1: _MAP_USER, 2: _MAP_BLOG, 3: _MAP_OBC_API, 4: _MAP_BLOG_ENTRY, 5: _MAP_OBC, 6: _MAP_OVC, 7: _MAP_OSC,
+             8: _MAP_OSC_API}
+#########################################################################################
 
 
 def _process(data: dict, sql_type: int):
@@ -61,13 +68,14 @@ def _process(data: dict, sql_type: int):
 @startEnd
 def user2DB(data: dict, send_request: bool = True, config: Config = None) -> dict:
     """映射getUserDetailRaw(...)的字段至oh_user，附处理。
-    send_request: 是否发送请求以获取用户头像/封面，默认为True。"""
+    send_request: 是否发送请求以获取用户头像和封面，默认为True。"""
     if config is None:
         config = getGlobalConfig()
     mapped = _process(data, 1)
     if send_request:
         mapped['avatar'] = _request('get', 'content', 'user2DB', data['avatar_url'], config=config)
-        mapped['cover'] = _request('get', 'content', 'user2DB', data['cover_url'], config=config)
+        mapped['cover_h'] = _request('get', 'content', 'user2DB', data['cover_h_url'], config=config)
+        mapped['cover_v'] = _request('get', 'content', 'user2DB', data['cover_v_url'], config=config)
     return mapped
 
 
