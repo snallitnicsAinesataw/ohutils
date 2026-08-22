@@ -55,10 +55,6 @@ class ChatClient(websocket.WebSocketApp):
                          on_pong=self._on_pong,
                          )
 
-    def sendPing(self) -> None:
-        """发送心跳包。一般无需外部触发此函数。"""
-        self.send(json.dumps({'type': 'ping'}))
-
     def _on_open(self, ws):
         # 默认函数。
         if self._user_on_open:
@@ -72,8 +68,7 @@ class ChatClient(websocket.WebSocketApp):
                     print(f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
                 if self.sock and self.sock.connected:
                     self._pinged = True
-                    self.sendPing()
-
+                    self.send(json.dumps({'type': 'ping'}))  # 发送心跳包
         threading.Thread(target=heartbeat, daemon=True).start()  # 启动新线程
         print(f"[ChatClient]connected to room '{self.room}'")
 
@@ -105,8 +100,8 @@ class ChatClient(websocket.WebSocketApp):
                 self._user_on_chat(ws, data)
             else:
                 print('[ChatClient/msg:chat]'
-                      f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}'
-                      f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else '')
+                      f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
+                      (f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else ''))
         elif type_ == 'message_deleted':
             print(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
         if self._user_on_message:
@@ -122,7 +117,7 @@ class ChatClient(websocket.WebSocketApp):
         if self._user_on_close:
             self._user_on_close(ws, code, msg)
         else:
-            print('[ChatClient]connection closed' + f' with code {code}' if code is not None else '')
+            print('[ChatClient]connection closed' + (f' with code {code}' if code is not None else ''))
 
     def _on_ping(self, *args, **kwargs):
         if self._user_on_ping:
