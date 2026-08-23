@@ -28,7 +28,8 @@ class ChatClient(websocket.WebSocketApp):
         websocket.WebSocketApp的包装。
         on_chat: 收到聊天信息时的回调函数。
         on_message: 收到所有信息时的回调函数。
-        on_online_change：在收到｢在线人数更改｣时的回调函数。"""
+        on_online_change：在收到｢在线人数更改｣时的回调函数。
+        格式详见connectChat()。"""
         self._url = f'wss://{config.chatAPIBase}ws?room={room}&token={token}'
         self.ws = None
         self._token = token
@@ -66,20 +67,21 @@ class ChatClient(websocket.WebSocketApp):
         def heartbeat():
             while self._running:
                 time.sleep(self._beat_interval)
-                if self._pinged:
+                if self._pinged and self._config.verbose:
                     print(f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
                 if self.sock and self.sock.connected:
                     self._pinged = True
                     self.send(json.dumps({'type': 'ping'}))  # 发送心跳包
         threading.Thread(target=heartbeat, daemon=True).start()  # 启动新线程
-        print(f"[ChatClient]connected to room '{self.room}'")
+        if self._config.verbose:
+            print(f"[ChatClient]connected to room '{self.room}'")
 
     def _on_message(self, ws, msg: str):
         # 默认函数。
         data: dict = json.loads(msg)
         type_ = data.get('type')
         if type_ == 'pong':
-            if not self._pinged:
+            if not self._pinged and self._config.verbose:
                 print('[ChatClient/heartbeat]'
                       f"{self._config.colorYellow}receive pong without ping. This shouldn't happen.\033[0m")
             self._pinged = False
@@ -90,21 +92,22 @@ class ChatClient(websocket.WebSocketApp):
             self.is_admin = bool(data.get('is_admin'))
             self.announcement: Optional[dict] = data.get('pinned_announcement')
             self.role = data.get('role')
-            print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
+            if self._config.verbose:
+                print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
             if self._user_on_online_change:
                 self._user_on_online_change(ws, data)
-            else:
+            elif self._config.verbose:
                 print('[ChatClient/msg:online]'
                       f'{self._config.colorGray}Online count:{data["count"]} @{round(time.time(), 3)}\033[0m')
         elif type_ == 'message':
             if self._user_on_chat:
                 self._user_on_chat(ws, data)
-            else:
+            elif self._config.verbose:
                 print('[ChatClient/msg:chat]'
                       f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
                       (f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else ''))
-        elif type_ == 'message_deleted':
+        elif type_ == 'message_deleted' and self._config.verbose:
             print(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
         if self._user_on_message:
             self._user_on_message(ws, data)
@@ -112,13 +115,13 @@ class ChatClient(websocket.WebSocketApp):
     def _on_error(self, ws, e):
         if self._user_on_error:
             self._user_on_error(ws, e)
-        else:
+        elif self._config.verbose:
             print(f'[ChatClient/error]{self._config.colorRed}{e}\033[0m')
 
     def _on_close(self, ws, code, msg):
         if self._user_on_close:
             self._user_on_close(ws, code, msg)
-        else:
+        elif self._config.verbose:
             print('[ChatClient]connection closed' + (f' with code {code}' if code is not None else ''))
 
     def _on_ping(self, *args, **kwargs):
@@ -132,7 +135,7 @@ class ChatClient(websocket.WebSocketApp):
     def _on_reconnect(self, ws):
         if self._user_on_reconnect:
             self._user_on_reconnect(ws)
-        else:
+        elif self._config.verbose:
             print(f'[ChatClient/reconnect]{self._config.colorYellow}reconnect triggered\033[0m')
 
     def stop(self):
@@ -211,10 +214,60 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
                 on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
                 ) -> Union[tuple[ChatClient, Thread], ChatClient]:
     """自动获取chat_token并连接聊天室。需要token。
-    threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread); 否则返回ChatClient，此时需要手动调用client.run_forever()。
+    threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread);
+    否则返回ChatClient，此时需要手动调用client.run_forever()。
     on_chat: 收到聊天信息时的回调函数。
+    在未覆盖on_message回调时，会优先调用传递的on_chat。
+    on_online_change: 在收到｢在线人数更改｣时的回调函数。
+    在未覆盖on_message回调时，会优先调用传递的on_online_change。
     on_message: 收到所有信息时的回调函数。
-    on_online_change：在收到｢在线人数更改｣时的回调函数。"""
+    on_message参数格式: 第一参数为WebSocket本身, 第二参数为dict.
+        dict格式:
+        'type': Literal['welcome', 'pong', 'online_count', 'message', 'message_deleted'],
+        其他键和值随type改变。
+
+        "type" == "pong": 无其它键值。
+        "type" == "welcome":
+            "is_admin": 0/1 -> 是否为管理员。
+            在未覆盖on_message回调时，此值会存储为client.is_admin: bool。
+            "mute": None/(??) -> 禁言状态(猜测)。
+            在未覆盖on_message回调时，此值会存储为client.mute。
+            "pinned_announcement": dict ->
+                {"room": str -> 房间,
+                "content": str -> 公告内容,
+                "pinned": bool -> 是否置顶,
+                "updated_by": int -> 执行更新的uid,
+                "updated_at": str -> YYYY-MM-DD HH:MM:SS格式时间。
+                可以通过ohutils.parseTime()转换为时间戳。}
+            在未覆盖on_message回调时，此值会存储为client.announcement。
+            "role": str (member/??) -> 角色。
+            在未覆盖on_message回调时，此值会存储为client.role。
+            "room": str -> 房间名称。
+            "uid": int -> token所对应uid。
+            在未覆盖on_message回调时，此值会存储为client.uid。
+            "username": str -> token所对应uid的用户名。
+            在未覆盖on_message回调时，此值会存储为client.name。
+        "type" == "online_count":
+            "room": str -> 房间名称。
+            "count": int -> 房间人数。
+        "type" == "message":
+            "id": int -> 消息id。
+            "room": str -> 房间名称。
+            "uid": int -> 发送者uid。
+            "username": str -> 发送者名称。
+            "content": str -> 发送者用户名。
+            "created_at": str -> YYYY-MM-DD HH:MM:SS格式时间。
+            可以通过ohutils.parseTime()转换为时间戳。
+            "reply": None|dict -> 回复的消息。
+                "id": int -> 源消息id。
+                "uid": int -> 源消息发送者uid。
+                "username": str -> 源消息发送者用户名。
+                "content": str -> 源消息文本。
+                "deleted": bool -> 源消息是否已删除。
+        "type" == "message_deleted":
+            "id": int -> 消息id。
+            "room": str -> 房间名称。
+    """
     if config is None:
         config = getGlobalConfig()
     token = getChatToken(config)

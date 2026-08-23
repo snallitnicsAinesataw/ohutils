@@ -15,4 +15,5 @@ from .obchk import (
 from .indexes import (
     buildBlogIndex, buildUserCommentIdx, buildOBCCommentIdx,
     loadBlogIndex, loadUserCommentIdx, loadOBCCommentIdx,
+    buildAllIndexes
 )
