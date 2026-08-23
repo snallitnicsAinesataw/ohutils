@@ -22,14 +22,11 @@ class ChatClient(websocket.WebSocketApp):
                  on_reconnect: Callable[[websocket.WebSocketApp], None] = None,
                  on_chat: Callable[[websocket.WebSocketApp, dict], None] = None,
                  on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
+                 on_welcome: Callable[[websocket.WebSocketApp, dict], None] = None,
                  heartbeat_interval: int = 30
                  ):
-        """聊天室客户端。
-        websocket.WebSocketApp的包装。
-        on_chat: 收到聊天信息时的回调函数。
-        on_message: 收到所有信息时的回调函数。
-        on_online_change：在收到｢在线人数更改｣时的回调函数。
-        格式详见connectChat()。"""
+        """聊天室客户端。websocket.WebSocketApp的包装。
+        通常不需直接实例化，而是使用connectChat()创建。如需直接使用，参数含义与connectChat()一致。"""
         self._url = f'wss://{config.chatAPIBase}ws?room={room}&token={token}'
         self.ws = None
         self._token = token
@@ -44,6 +41,7 @@ class ChatClient(websocket.WebSocketApp):
         self._user_on_reconnect = on_reconnect
         self._user_on_chat = on_chat
         self._user_on_online_change = on_online_change
+        self._user_on_welcome = on_welcome
         self._pinged = False
         self._running = False
         self._beat_interval = heartbeat_interval
@@ -86,14 +84,17 @@ class ChatClient(websocket.WebSocketApp):
                       f"{self._config.colorYellow}receive pong without ping. This shouldn't happen.\033[0m")
             self._pinged = False
         elif type_ == 'welcome':
-            self.uid = data.get('uid')
-            self.name = data.get('username')
-            self.mute = data.get('mute')
-            self.is_admin = bool(data.get('is_admin'))
-            self.announcement: Optional[dict] = data.get('pinned_announcement')
-            self.role = data.get('role')
-            if self._config.verbose:
-                print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
+            if self._user_on_welcome:
+                self._user_on_welcome(ws, data)
+            else:
+                self.uid = data.get('uid')
+                self.name = data.get('username')
+                self.mute = data.get('mute')
+                self.is_admin = bool(data.get('is_admin'))
+                self.announcement: Optional[dict] = data.get('pinned_announcement')
+                self.role = data.get('role')
+                if self._config.verbose:
+                    print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
             if self._user_on_online_change:
                 self._user_on_online_change(ws, data)
@@ -212,15 +213,17 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
                 on_reconnect: Callable[[websocket.WebSocketApp], None] = None,
                 on_chat: Callable[[websocket.WebSocketApp, dict], None] = None,
                 on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
+                on_welcome: Callable[[websocket.WebSocketApp, dict], None] = None
                 ) -> Union[tuple[ChatClient, Thread], ChatClient]:
     """自动获取chat_token并连接聊天室。需要token。
     threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread);
     否则返回ChatClient，此时需要手动调用client.run_forever()。
     on_chat: 收到聊天信息时的回调函数。
-    在未覆盖on_message回调时，会优先调用传递的on_chat。
-    on_online_change: 在收到｢在线人数更改｣时的回调函数。
-    在未覆盖on_message回调时，会优先调用传递的on_online_change。
+    on_online_change: 收到｢在线人数更改｣时的回调函数。
+    on_welcome: 收到欢迎信息时的回调函数。
     on_message: 收到所有信息时的回调函数。
+    即使传递了on_chat / on_message / on_online_change参数, on_message仍会被调用。
+
     on_message参数格式: 第一参数为WebSocket本身, 第二参数为dict.
         dict格式:
         'type': Literal['welcome', 'pong', 'online_count', 'message', 'message_deleted'],
@@ -229,24 +232,24 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
         "type" == "pong": 无其它键值。
         "type" == "welcome":
             "is_admin": 0/1 -> 是否为管理员。
-            在未覆盖on_message回调时，此值会存储为client.is_admin: bool。
+            在默认行为下，此值会存储为client.is_admin: bool。
             "mute": None/(??) -> 禁言状态(猜测)。
-            在未覆盖on_message回调时，此值会存储为client.mute。
+            在默认行为下，此值会存储为client.mute。
             "pinned_announcement": dict ->
-                {"room": str -> 房间,
+                "room": str -> 房间,
                 "content": str -> 公告内容,
                 "pinned": bool -> 是否置顶,
                 "updated_by": int -> 执行更新的uid,
                 "updated_at": str -> YYYY-MM-DD HH:MM:SS格式时间。
-                可以通过ohutils.parseTime()转换为时间戳。}
-            在未覆盖on_message回调时，此值会存储为client.announcement。
+                可以通过ohutils.parseTime()转换为时间戳。
+            在默认行为下，此值会存储为client.announcement。
             "role": str (member/??) -> 角色。
-            在未覆盖on_message回调时，此值会存储为client.role。
+            在默认行为下，此值会存储为client.role。
             "room": str -> 房间名称。
             "uid": int -> token所对应uid。
-            在未覆盖on_message回调时，此值会存储为client.uid。
+            在默认行为下，此值会存储为client.uid。
             "username": str -> token所对应uid的用户名。
-            在未覆盖on_message回调时，此值会存储为client.name。
+            在默认行为下，此值会存储为client.name。
         "type" == "online_count":
             "room": str -> 房间名称。
             "count": int -> 房间人数。
@@ -273,7 +276,7 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
     token = getChatToken(config)
     client = ChatClient(token, room, config, on_open=on_open, on_reconnect=on_reconnect, on_message=on_message,
                         on_error=on_error, on_ping=on_ping, on_chat=on_chat, on_close=on_close, on_pong=on_pong,
-                        on_online_change=on_online_change, heartbeat_interval=beat_interval)
+                        on_online_change=on_online_change, heartbeat_interval=beat_interval, on_welcome=on_welcome)
     if threaded:
         thread = threading.Thread(target=client.run_forever, daemon=True)
         thread.start()
