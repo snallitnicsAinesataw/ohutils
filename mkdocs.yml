@@ -1,0 +1,5 @@
+site_name: ohutils
+docs_dir: docs
+
+nav:
+  - 首页: README.md
