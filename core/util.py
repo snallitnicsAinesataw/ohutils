@@ -2,7 +2,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
-from typing import TypeVar, Generic, List, Union, Literal, Callable
+from typing import TypeVar, Generic, List, Union, Literal, Callable, Optional
 import inspect
 import os
 import sys
@@ -75,6 +75,8 @@ class BlogEntry:
     copyright_type: int = 0
     is_gore: bool = False
     attached_vid: int = 0
+    forward_bid: int = 0
+    is_unavailable: bool = False
 
     def toDict(self):
         return asdict(self)

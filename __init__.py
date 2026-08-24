@@ -14,8 +14,9 @@ from .core.util import (
 from .core.config import Config, setGlobalConfig, getGlobalConfig
 
 __version__ = "0.7.0"
-F_ENCRYPT = 1
+F_ENCRYPT_CONTENT = 1
 F_GORE = 2
+F_HAS_FORWARD = 4
 CT_ALL = 'all'
 CT_BLOG = 'blog'
 CT_VIDEO = 'video'

@@ -10,152 +10,63 @@ import zlib
 import time
 import os
 from datetime import datetime
-from deprecated import deprecated
-CURR_LATEST_OBARC_VER = 5
+CURR_LATEST_OBARC_VER = 6
 _T = TypeVar('_T')
 
 
-def parseComment2(data: bytes, offset: int) -> tuple[Comment, int]:
-    bcid, uid, ts, content_len = struct.unpack_from('<III I', data, offset)
-    offset += 16
+def _parseComment(version: int, data: bytes, offset: int) -> tuple[Comment, int]:
+    pin = 0  # PyCharm别扯
+    if version >= 5:
+        bcid, uid, ts, pin, content_len = struct.unpack_from('<IIII I', data, offset)
+        offset += 20
+    else:
+        bcid, uid, ts, content_len = struct.unpack_from('<III I', data, offset)
+        offset += 16
     content = data[offset:offset + content_len].decode('utf-8')
     offset += content_len
-    reply_count = data[offset]
-    offset += 1
+    if version >= 3:
+        reply_count = struct.unpack_from('<I', data, offset)[0]
+        offset += 4
+    else:
+        reply_count = data[offset]
+        offset += 1
     replies = []
     for _ in range(reply_count):
-        reply, offset = parseComment2(data, offset)
+        reply, offset = _parseComment(version, data, offset)
         replies.append(reply)
-    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
+    if version >= 5:
+        return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, bool(pin), pin, 'blog'), offset
+    else:
+        return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
 
 
-def parseComment3(data: bytes, offset: int) -> tuple[Comment, int]:
-    bcid, uid, ts, content_len = struct.unpack_from('<III I', data, offset)
-    offset += 16
-    content = data[offset:offset + content_len].decode('utf-8')
-    offset += content_len
-    reply_count = struct.unpack_from('<I', data, offset)[0]
-    offset += 4
-    replies = []
-    for _ in range(reply_count):
-        reply, offset = parseComment3(data, offset)
-        replies.append(reply)
-    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
-
-
-def parseComment4(data: bytes, offset: int) -> tuple[Comment, int]:
-    """v4评论格式与v3一致，可以直接使用parseComment3"""
-    return parseComment3(data, offset)
-
-
-def parseComment5(data: bytes, offset: int) -> tuple[Comment, int]:
-    bcid, uid, ts, pin, content_len = struct.unpack_from('<IIII I', data, offset)
-    offset += 20
-    content = data[offset:offset + content_len].decode('utf-8')
-    offset += content_len
-    reply_count = struct.unpack_from('<I', data, offset)[0]
-    offset += 4
-    replies = []
-    for _ in range(reply_count):
-        reply, offset = parseComment5(data, offset)
-        replies.append(reply)
-    return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, bool(pin), pin, 'blog'), offset
-
-
-def parseBlog2(data: bytes, offset: int, channel_id: int, timestamp: int, arc_time: int) -> tuple[BlogEntry, int]:
-    (bid, uid, like, fav, view, title_len) = struct.unpack_from('<II HHHH', data, offset)
-    offset += 16  # 4+4+2+2+2+2
-    title = data[offset:offset + title_len].decode('utf-8')
-    offset += title_len
-    content_len = struct.unpack_from('<I', data, offset)[0]
-    offset += 4
-    content = data[offset:offset + content_len].decode('utf-8')
-    offset += content_len
-    comment_count = struct.unpack_from('<H', data, offset)[0]
-    offset += 2
-    comments = []
-    for _ in range(comment_count):
-        comment, offset = parseComment2(data, offset)
-        comments.append(comment)
-    return BlogEntry(bid, uid, like, fav, view, channel_id, title, timestamp, arc_time, content, comments), offset
-
-
-def parseBlog3(data: bytes, offset: int, channel_id: int, pub_ts: int, arc_ts: int) -> tuple[BlogEntry, int]:
-    bid, uid, like, fav, view, title_len = struct.unpack_from('<II HHHH', data, offset)
-    offset += 16
-
-    title = data[offset:offset + title_len].decode('utf-8')
-    offset += title_len
-
-    content_len = struct.unpack_from('<I', data, offset)[0]
-    offset += 4
-    content = data[offset:offset + content_len].decode('utf-8')
-    offset += content_len
-
-    comment_count = struct.unpack_from('<H', data, offset)[0]
-    offset += 2
-
-    comments = []
-    for _ in range(comment_count):
-        c, offset = parseComment3(data, offset)
-        comments.append(c)
-
-    return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments), offset
-
-
-def parseBlog4(data: bytes, flags: int,
+def _parseBlog(version: int, data: bytes, flags: int,
                offset: int, channel_id: int, pub_ts: int, arc_ts: int, tag_count: int) -> tuple[BlogEntry, int]:
-    bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
-    offset += 14
+    b_type, tags, cr_type, is_gore, attached_vid, forward_bid, is_unavailable = 0, [], 0, False, 0, 0, False
+    # PyCharm别扯
+    if version <= 3:
+        bid, uid, like, fav, view, title_len = struct.unpack_from('<II HHHH', data, offset)
+        offset += 16
+    else:
+        # ver >= 4
+        bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
+        offset += 14
+        is_gore = bool(flags & 2)
+        is_unavailable = bool(flags & 4)
+        tags = []
+        for _ in range(tag_count):
+            tag_len = struct.unpack_from('<H', data, offset)[0]
+            offset += 2
+            tag = data[offset: offset + tag_len].decode('utf-8')
+            offset += tag_len
+            tags.append(tag)
 
-    is_gore = bool(flags & 2)
-    tags = []
-    for _ in range(tag_count):
-        tag_len = struct.unpack_from('<H', data, offset)[0]
-        offset += 2
-        tag = data[offset: offset + tag_len].decode('utf-8')
-        offset += tag_len
-        tags.append(tag)
-
-    attached_vid, cr_type, b_type, title_len = struct.unpack_from('<III H', data, offset)
-    offset += 14
-
-    title = data[offset:offset + title_len].decode('utf-8')
-    offset += title_len
-
-    content_len = struct.unpack_from('<I', data, offset)[0]
-    offset += 4
-    content = data[offset:offset + content_len].decode('utf-8')
-    offset += content_len
-
-    comment_count = struct.unpack_from('<H', data, offset)[0]
-    offset += 2
-
-    comments = []
-    for _ in range(comment_count):
-        c, offset = parseComment3(data, offset)
-        comments.append(c)
-
-    return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
-                     b_type, tags, cr_type, is_gore, attached_vid), offset
-
-
-def parseBlog5(data: bytes, flags: int,
-               offset: int, channel_id: int, pub_ts: int, arc_ts: int, tag_count: int) -> tuple[BlogEntry, int]:
-    bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
-    offset += 14
-
-    is_gore = bool(flags & 2)
-    tags = []
-    for _ in range(tag_count):
-        tag_len = struct.unpack_from('<H', data, offset)[0]
-        offset += 2
-        tag = data[offset: offset + tag_len].decode('utf-8')
-        offset += tag_len
-        tags.append(tag)
-
-    attached_vid, cr_type, b_type, title_len = struct.unpack_from('<III H', data, offset)
-    offset += 14
+        if version >= 6:
+            attached_vid, cr_type, b_type, forward_bid, title_len = struct.unpack_from('<IIII H', data, offset)
+            offset += 18
+        else:
+            attached_vid, cr_type, b_type, title_len = struct.unpack_from('<III H', data, offset)
+            offset += 14
 
     title = data[offset:offset + title_len].decode('utf-8')
     offset += title_len
@@ -170,15 +81,20 @@ def parseBlog5(data: bytes, flags: int,
 
     comments = []
     for _ in range(comment_count):
-        c, offset = parseComment5(data, offset)
+        c, offset = _parseComment(version, data, offset)
         comments.append(c)
-
-    return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
-                     b_type, tags, cr_type, is_gore, attached_vid), offset
+    if version >= 6:
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
+                         b_type, tags, cr_type, is_gore, attached_vid, forward_bid, is_unavailable), offset
+    elif 4 <= version <= 5:
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
+                         b_type, tags, cr_type, is_gore, attached_vid), offset
+    else:
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments), offset
 
 
 def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    """写入单个动态的.obarc文件"""
+    """写入单个动态的.obarc文件。"""
     if config is None:
         config = getGlobalConfig()
 
@@ -193,7 +109,11 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             b_type = blog_data.get("blog_type", 0)
             attached_vid = blog_data.get("attached_vid", 0)
             tags = blog_data.get("tag", [])
-            flag = blog_data.get("is_gore", 0) << 1
+            forward = blog_data.get("forward")
+            is_unavailable = 0
+            if forward is not None:
+                is_unavailable = forward.get("is_unavailable")
+            flag = (blog_data.get("is_gore", 0) << 1) | is_unavailable << 2
 
         f.write(b'OBARC')  # 4B magic
         f.write(struct.pack('<B', version))  # 1B版本
@@ -225,6 +145,9 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             f.write(struct.pack('<I', int(attached_vid)))
             f.write(struct.pack('<I', int(cr_type)))
             f.write(struct.pack('<I', int(b_type)))
+            if version >= 6:
+                # v6新增字段
+                f.write(struct.pack('<I', blog_data.get("forward_bid", 0)))
 
         f.write(struct.pack('<H', len(title_bytes)))  # title_len
         f.write(title_bytes)  # title
@@ -238,7 +161,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             f.write(struct.pack('<I', c.cid))
             f.write(struct.pack('<I', c.uid))
             f.write(struct.pack('<I', c.timestamp))
-            if version == 5:  # v5新增字段pin_order
+            if version >= 5:  # v5新增字段pin_order
                 f.write(struct.pack('<I', c.pin_order))
             f.write(struct.pack('<I', len(content_bytes)))
             f.write(content_bytes)
@@ -275,21 +198,6 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
     if config.verbose:
         print(f"[_writeObarc]Write complete in v{version}: {filename}, CRC32: {crc32:08X}")
     return filename
-
-
-@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
-def writeObarc2(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    return _writeObarc(2, bid, blog_data, comments, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
-def writeObarc3(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    return _writeObarc(3, bid, blog_data, comments, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用writeObarc()", version='0.5.0')
-def writeObarc4(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    return _writeObarc(4, bid, blog_data, comments, config)
 
 
 def writeObarc(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
@@ -397,30 +305,8 @@ def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
         # 跳过文件头，读取数据部分
         data = f.read()
 
-    if version == 2:
-        blog, _ = parseBlog2(data, 0, channel_id, timestamp, archive_time)
-    elif version == 3:
-        blog, _ = parseBlog3(data, 0, channel_id, timestamp, archive_time)
-    elif version == 4:
-        blog, _ = parseBlog4(data, flags, 0, channel_id, timestamp, archive_time, tag_count)
-    else:
-        blog, _ = parseBlog5(data, flags, 0, channel_id, timestamp, archive_time, tag_count)
+    blog, _ = _parseBlog(version, data, flags, 0, channel_id, timestamp, archive_time, tag_count)
     return blog
-
-
-@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
-def loadObarc2(bid: int, config: Config = None) -> BlogEntry:
-    return _loadObarc(2, bid, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
-def loadObarc3(bid: int, config: Config = None) -> BlogEntry:
-    return _loadObarc(3, bid, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用loadObarc()", version='0.5.0')
-def loadObarc4(bid: int, config: Config = None) -> BlogEntry:
-    return _loadObarc(4, bid, config)
 
 
 def loadObarc(bid: int, config: Config = None) -> BlogEntry:
@@ -441,14 +327,7 @@ def loadObarcBytes(f_bytes: bytes) -> BlogEntry:
     channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
     timestamp = struct.unpack('<I', header[0x8:0xC])[0]
     archive_time = struct.unpack('<I', header[0xC:0x10])[0]
-    if version == 5:
-        blog, _ = parseBlog5(f_bytes[32:], flags, 0, channel_id, timestamp, archive_time, tag_count)
-    elif version == 4:
-        blog, _ = parseBlog4(f_bytes[32:], flags, 0, channel_id, timestamp, archive_time, tag_count)
-    elif version == 3:
-        blog, _ = parseBlog3(f_bytes[32:], 0, channel_id, timestamp, archive_time)
-    else:
-        blog, _ = parseBlog2(f_bytes[32:], 0, channel_id, timestamp, archive_time)
+    blog, _ = _parseBlog(version, f_bytes[32:], flags, 0, channel_id, timestamp, archive_time, tag_count)
     return blog
 
 
@@ -506,21 +385,6 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         if verbose:
             print(f"[_archiveBlog/v{version}]File {file_name} merge complete")
     return file_path, True
-
-
-@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
-def archiveBlog2(bid: int, config: Config = None) -> Tuple[str, bool]:
-    return _archiveBlog(2, bid, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
-def archiveBlog3(bid: int, config: Config = None) -> Tuple[str, bool]:
-    return _archiveBlog(3, bid, config)
-
-
-@deprecated(reason="为向后兼容保留，请使用archiveBlog()", version='0.5.0')
-def archiveBlog4(bid: int, config: Config = None) -> Tuple[str, bool]:
-    return _archiveBlog(4, bid, config)
 
 
 def archiveBlog(bid: int, config: Config = None) -> Tuple[str, bool]:

@@ -1,12 +1,9 @@
 from .obarc import (
-    archiveBlog2, archiveBlog3, archiveBlog4, archiveBlog,
+    archiveBlog,
     getGlobalConfig, getBlogRaw, getAllBlogComments, getVersion,
-    parseBlog2, parseBlog3, parseBlog4,
-    parseComment2, parseComment3, parseComment4,
-    loadObarc2, loadObarc3, loadObarc4, loadObarc,
-    loadObarcBytes,
+    loadObarc,loadObarcBytes,
     mergeComments,
-    writeObarc2, writeObarc3, writeObarc4, writeObarc,
+    writeObarc,
 )
 from .obchk import (
     loadChunk, buildChunk,

@@ -2,7 +2,7 @@ from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey
 from ..core.config import Config, getGlobalConfig
 import zlib
 import struct
-from .obarc import parseBlog2, parseBlog3, parseBlog4
+from .obarc import _parseBlog
 from typing import Union
 import os
 import time
@@ -31,14 +31,7 @@ def deserializeBlog(data: bytes) -> BlogEntry:
 
     # 数据区从第 22 字节开始
     blog_data = data[22:]
-    if version == 5:
-        blog, _ = parseBlog4(blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
-    elif version == 4:
-        blog, _ = parseBlog4(blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
-    elif version == 3:
-        blog, _ = parseBlog3(blog_data, 0, channel_id, pub_ts, arc_ts)
-    else:
-        blog, _ = parseBlog2(blog_data, 0, channel_id, pub_ts, arc_ts)
+    blog, _ = _parseBlog(version, blog_data, flags, 0, channel_id, pub_ts, arc_ts, tag_count)
     return blog
 
 
@@ -46,7 +39,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
     """
     构建.obchk文件。
     标志:
-    位0:加密
+    位0: 加密内容。
     """
     if config is None:
         config = getGlobalConfig()
