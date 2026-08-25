@@ -6,6 +6,12 @@ from ..core.config import Config, getGlobalConfig
 from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry
 from dataclasses import asdict
 
+
+def _tag_factory(tags: list[str]) -> str:
+    tags.remove('吉吉国民')
+    return ','.join(tags)
+
+
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
 _MAP = {1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
         sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover_h BLOB, cover_v BLOB, video INTEGER, blog INTEGER,
@@ -50,7 +56,7 @@ _MAP_BLOG = {'bid': ('bid', int), 'uid': ('uid', int), 'time': ('pub_ts', parseT
              'favorite_count': ('fav', int), 'view_count': ('view', int), 'attached_vid': ('attached_vid', int),
              'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
              'comment_count': ('comment_count', int), 'title': ('title', None), 'content': ('content', None),
-             'is_gore': ('gore', int), 'tag': ('tags', lambda x: ','.join(x)), 'channel_id': ('channel', int)}
+             'is_gore': ('gore', int), 'tag': ('tags', _tag_factory), 'channel_id': ('channel', int)}
 # _MAP_OBC_API特殊处理bid, API不返回。
 _MAP_OBC_API = {'bcid': ('bcid', int), 'uid': ('uid', int), 'parent_bcid': ('parent_bcid', int),
                 'time': ('pub_ts', parseTime), 'content': ('content', None), 'child_comment_num': ('reply_count', int),
@@ -79,6 +85,8 @@ _MAP_SEIGA_API = {'sid': ('sid', int), 'uid': ('uid', int), 'title': ('title', N
 # sql_type集合是map_type集合的真子集。
 _META_MAP = {1: _MAP_USER, 2: _MAP_BLOG, 3: _MAP_OBC_API, 4: _MAP_BLOG_ENTRY, 5: _MAP_OBC, 6: _MAP_OVC, 7: _MAP_OSC,
              8: _MAP_OSC_API, 13: _MAP_SEIGA_API}
+
+
 #########################################################################################
 
 
@@ -176,9 +184,28 @@ def following2DB(main_uid: int, data: list[dict]) -> list[tuple[int, int]]:
     return result
 
 
-def seiga2DB(data: dict, config: Config = None):
+def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[dict, list[dict], list[dict], list[dict]]:
     """映射getSeigaDetailRaw(...)的字段至数据表。
-    """
+    send_request: 是否发送请求以获取原始静画，默认为False(仅存储URL)。
+    返回[oh_seiga_v1, oh_seiga_tag_v1, oh_seiga_tagmap_v1, oh_seiga_page_v1]。"""
+    sid = int(data['sid'])
+    mapped = _process(data, 13)  # 13: SEIGA_API
+    tag_dicts, tagmap_dicts, page_dicts = [], [], []
+    for t in data['tags']:
+        tid = int(t['tag_id'])
+        tag_dicts.append({'tid': tid, 'name': t['tag_name']})
+        tagmap_dicts.append({'sid': sid, 'tid': tid, 'is_locked': t['is_locked'],
+                             'lock_sort': t['lock_sort'], 'added_by': int(t['added_by_uid'])})
+    for p in data['pages']:
+        p_dict = {'sid': sid, 'page_no': int(p['page_no']), 'asset_id': int(p['image_asset_id']),
+                  'width': int(p['width']), 'height': int(p['height']), 'is_animated': p['is_animated']}
+        if send_request:
+            p_dict['original'] = _request('get', 'content', 'seiga2DB', data['original_url'], config=config)
+        else:
+            p_dict['original_url'] = p['original_url']
+        page_dicts.append(p_dict)
+    return mapped, tag_dicts, tagmap_dicts, page_dicts
+
 
 
 def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
