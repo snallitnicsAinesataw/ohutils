@@ -25,3 +25,13 @@ def checkinRaw(config: Config = None) -> dict:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/sign-in/"
     return _request('post', 'json', 'signinRaw', url, config, {"token": config.token})
+
+
+@startEnd
+def sendVerificationCode(e_mail: str, config: Config = None) -> None:
+    """发送｢邮箱验证码｣ (用于重置密码)。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/auth/password-reset/verification-code"
+    _request('post', 'json', 'sendVerificationCode', url, config, {'email': e_mail})
+

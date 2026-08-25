@@ -1,7 +1,7 @@
 import random
 import requests
 from ..core.config import Config, getGlobalConfig
-from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData
+from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData, decrypt, genKey
 from typing import List, Dict, Tuple, TypeVar
 from ..core.blog_api import getAllBlogComments, getBlogRaw
 from ..core.exception import BIDError
@@ -40,8 +40,8 @@ def _parseComment(version: int, data: bytes, offset: int) -> tuple[Comment, int]
         return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
 
 
-def _parseBlog(version: int, data: bytes, flags: int,
-               offset: int, channel_id: int, pub_ts: int, arc_ts: int, tag_count: int) -> tuple[BlogEntry, int]:
+def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: int,
+               pub_ts: int, arc_ts: int, tag_count: int, pswd: bytes = b'') -> tuple[BlogEntry, int]:
     b_type, tags, cr_type, is_gore, attached_vid, forward_bid, is_unavailable = 0, [], 0, False, 0, 0, False
     # PyCharm别扯
     if version <= 3:
@@ -49,15 +49,25 @@ def _parseBlog(version: int, data: bytes, flags: int,
         offset += 16
     else:
         # ver >= 4
+        # 为.obarc支持F_ENCRYPT_CONTENT作准备。
+        is_gore = flags & 2
+        is_unavailable = flags & 4
+        is_encrypted = flags & 1
+        if is_encrypted:
+            salt = data[offset: offset + 16]
+            offset += 16
+            key, _ = genKey(pswd, salt)
+            data = decrypt(key, data[offset:])
+            offset = 0
+
         bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
         offset += 14
-        is_gore = bool(flags & 2)
-        is_unavailable = bool(flags & 4)
+
         tags = []
         for _ in range(tag_count):
             tag_len = struct.unpack_from('<H', data, offset)[0]
             offset += 2
-            tag = data[offset: offset + tag_len].decode('utf-8')
+            tag = data[offset: offset+tag_len].decode('utf-8')
             offset += tag_len
             tags.append(tag)
 
