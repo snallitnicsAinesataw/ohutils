@@ -9,11 +9,14 @@ from dataclasses import asdict
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
 _MAP = {1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
         sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover_h BLOB, cover_v BLOB, video INTEGER, blog INTEGER,
-        seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER''', 'uid'),
+        seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER, avatar_url TEXT, cover_h_url TEXT, cover_v_url TEXT,
+        CHECK (((avatar IS NULL AND avatar_url IS NOT NULL) OR (avatar IS NOT NULL AND avatar_url IS NULL)) AND 
+        ((cover_h IS NULL AND cover_h_url IS NOT NULL) OR (cover_h IS NOT NULL AND cover_h_url IS NULL)) AND 
+        ((cover_v IS NULL AND cover_v_url IS NOT NULL) OR (cover_v IS NOT NULL AND cover_v_url IS NULL)))''', 'uid'),
         2: ('oh_blog_v1', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
         blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER''', 'bid'),
-        3: ('oh_obc_v1', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
+        5: ('oh_obc_v1', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'bcid'),
         6: ('oh_ovc_v1', '''vcid INTEGER PRIMARY KEY NOT NULL, vid INTEGER, uid INTEGER, parent_vcid INTEGER DEFAULT 0,
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid'),
@@ -33,7 +36,8 @@ _MAP = {1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro 
         15: ('oh_seiga_tagmap_v1', '''sid INTEGER NOT NULL, tid INTEGER NOT NULL, is_locked INTEGER DEFAULT 0, 
         lock_sort INTEGER DEFAULT 0, added_by INTEGER, PRIMARY KEY (sid, tid)''', '(sid, tid)'),
         16: ('oh_seiga_page_v1', '''sid INTEGER PRIMARY KEY NOT NULL, page_no INTEGER, asset_id INTEGER, original BLOB, 
-        width INTEGER, height INTEGER, is_animated INTEGER DEFAULT 0''', 'sid')
+        original_url TEXT, width INTEGER, height INTEGER, is_animated INTEGER DEFAULT 0, CHECK 
+        ((original IS NULL AND original_url IS NOT NULL) OR (original IS NOT NULL AND original_url IS NULL))''', 'sid')
         }
 ##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
@@ -66,10 +70,15 @@ _MAP_OSC = {'cid': ('scid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts',
 # _MAP_OSC_API特殊处理sid, API不返回。
 _MAP_OSC_API = {'bcid': ('scid', int), 'uid': ('uid', int), 'parent_scid': ('parent_scid', int),
                 'time': ('pub_ts', parseTime), 'content': ('content', None), 'child_comment_num': ('reply_count', int)}
-_MAP_FOLLOW = {}
+_MAP_SEIGA_API = {'sid': ('sid', int), 'uid': ('uid', int), 'title': ('title', None), 'description': ('desc', None),
+                  'page_count': ('pages', int), 'is_fanwork': ('is_doujin', int), 'hall_at': ('hall', None),
+                  'is_ai': ('is_ai', int), 'is_gore': ('is_gore', int), 'time': ('pub_ts', parseTime),
+                  'favorite_count': ('fav', int), 'view_count': ('view', int), 'comment_count': ('comment_count', int)}
 #########################################################################################
+# map_type: int -> map: dict
+# sql_type集合是map_type集合的真子集。
 _META_MAP = {1: _MAP_USER, 2: _MAP_BLOG, 3: _MAP_OBC_API, 4: _MAP_BLOG_ENTRY, 5: _MAP_OBC, 6: _MAP_OVC, 7: _MAP_OSC,
-             8: _MAP_OSC_API, 9: _MAP_FOLLOW}
+             8: _MAP_OSC_API, 13: _MAP_SEIGA_API}
 #########################################################################################
 
 
@@ -91,10 +100,14 @@ def user2DB(data: dict, send_request: bool = True, config: Config = None) -> dic
     if config is None:
         config = getGlobalConfig()
     mapped = _process(data, 1)  # 1: USER
+    mapped['arc_ts'] = int(time())  # 使用当前时间代替
     if send_request:
         mapped['avatar'] = _request('get', 'content', 'user2DB', data['avatar_url'], config=config)
         mapped['cover_h'] = _request('get', 'content', 'user2DB', data['cover_h_url'], config=config)
         mapped['cover_v'] = _request('get', 'content', 'user2DB', data['cover_v_url'], config=config)
+    else:
+        mapped['avatar_url'] = mapped['avatar_url']
+        mapped['cover_h_url'], mapped['cover_v_url'] = data['cover_h_url'], data['cover_v_url']
     return mapped
 
 
@@ -154,6 +167,20 @@ def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0):
     return mapped
 
 
+def following2DB(main_uid: int, data: list[dict]) -> list[tuple[int, int]]:
+    """映射关注的用户信息至数据表。需要提供main_uid (关注者uid)。返回[(uid, target_uid), ...]。
+    data可以从ohutils.user_api.getAllFollowings(main_uid)获取。"""
+    result = []
+    for relation in data:
+        result.append((main_uid, relation['uid']))
+    return result
+
+
+def seiga2DB(data: dict, config: Config = None):
+    """映射getSeigaDetailRaw(...)的字段至数据表。
+    """
+
+
 def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
     """记得conn.close()"""
     if config is None:
@@ -185,9 +212,26 @@ def writeData(sql_type: int, conn: sqlite3.Connection, no_update: bool = False, 
 
 
 def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwargs) -> list:
+    """从指定数据库读取选择的字段(fields)，带条件。
+    条件的比较运算符: 若无后缀，为等于(=)。
+    若有__gt / __lt / __ge / __le / __ne 后缀，
+    则分别为大于(>)，小于(<)，大于等于(>=)，小于等于(<=)，不等于(!=)。
+
+    e.g.:
+    view__le=132 -> view <= 132
+    exp__gt=100 -> exp > 100
+    fav=15 -> fav = 15
+    """
     cur = conn.cursor()
     fields_str = ", ".join(fields) if fields else "*"
-    cond = 'WHERE ' if kwargs.keys() else '' + " AND ".join([f"{k} = ?" for k in kwargs.keys()])
+    kv = []
+    for k in kwargs.keys():
+        k_list = k.split('__', maxsplit=1)
+        if len(k_list) == 1:
+            kv.append(k + ' = ?')  # 无后缀
+        else:
+            kv.append(k_list[0] + {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!='}[k_list[1]] + ' ?')
+    cond = 'WHERE ' if kwargs.keys() else '' + " AND ".join(...)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"
     cur.execute(query, tuple(kwargs.values()))
     return cur.fetchall()
