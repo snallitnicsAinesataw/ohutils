@@ -19,7 +19,22 @@ _MAP = {1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro 
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid'),
         7: ('oh_osc_v1', '''scid INTEGER PRIMARY KEY NOT NULL, sid INTEGER, uid INTEGER, parent_scid INTEGER DEFAULT 0, 
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'scid'),
-        9: ('oh_follow_v1', 'uid INTEGER, target_uid INTEGER, PRIMARY KEY (uid, target_uid)', '(uid, target_uid)')}
+        9: ('oh_follow_v1', 'uid INTEGER, target_uid INTEGER, PRIMARY KEY (uid, target_uid)', '(uid, target_uid)'),
+        10: ('oh_blog_collection_v1', '''bid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+        PRIMARY KEY (name, bid)''', '(name, bid)'),
+        11: ('oh_video_collection_v1', '''vid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+        PRIMARY KEY (name, vid)''', '(name, vid)'),
+        12: ('oh_seiga_collection_v1', '''sid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+        PRIMARY KEY (name, sid)''', '(name, sid)'),
+        13: ('oh_seiga_v1', '''sid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, title TEXT, desc TEXT, pages INTEGER, 
+        is_doujin INTEGER DEFAULT 0, is_ai INTEGER DEFAULT 0, is_gore INTEGER DEFAULT 0, hall TEXT, 
+        pub_ts INTEGER DEFAULT 946656000, fav INTEGER, view INTEGER, comment_count INTEGER''', 'sid'),
+        14: ('oh_seiga_tag_v1', 'tid INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL', 'tid'),
+        15: ('oh_seiga_tagmap_v1', '''sid INTEGER NOT NULL, tid INTEGER NOT NULL, is_locked INTEGER DEFAULT 0, 
+        lock_sort INTEGER DEFAULT 0, added_by INTEGER, PRIMARY KEY (sid, tid)''', '(sid, tid)'),
+        16: ('oh_seiga_page_v1', '''sid INTEGER PRIMARY KEY NOT NULL, page_no INTEGER, asset_id INTEGER, original BLOB, 
+        width INTEGER, height INTEGER, is_animated INTEGER DEFAULT 0''', 'sid')
+        }
 ##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
 _MAP_USER = {'uid': ('uid', int), 'username': ('name', None), 'intro': ('intro', None),
