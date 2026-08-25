@@ -228,9 +228,9 @@ def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwa
     for k in kwargs.keys():
         k_list = k.split('__', maxsplit=1)
         if len(k_list) == 1:
-            kv.append(k + ' = ?')  # 无后缀
+            kv.append(k + '=?')  # 无后缀
         else:
-            kv.append(k_list[0] + {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!='}[k_list[1]] + ' ?')
+            kv.append(k_list[0] + {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!='}[k_list[1]] + '?')
     cond = 'WHERE ' if kwargs.keys() else '' + " AND ".join(...)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"
     cur.execute(query, tuple(kwargs.values()))
