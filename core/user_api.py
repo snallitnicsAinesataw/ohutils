@@ -65,10 +65,9 @@ def isUserAlive(uid: int, config: Config = None) -> bool:
 
 
 def findLatestUser(max_n: int = 10 ** 6, config: Config = None) -> int:
-    """通过二分法寻找最后注册的uid。
-    max_n为二分上界。"""
+    """通过二分法寻找最后注册的uid。max_n为二分上界。"""
     died = [122, 343, 891, 1947, 5365, 5862, 6361, 6496, 6760, 7856, 8664, 8958, 9733, 10414, 10417, 12801, 13488,
-            15689, 17152, 19215, 19325, 20081, 20260, 22522, 23596]  # 28Ciry数据(ob51567)
+            15689, 17152, 19215, 19325, 20081, 20260, 22522, 23188, 23596]  # 数据来自28Ciry(ob53116)
     if config is None:
         config = getGlobalConfig()
     lo, hi = 0, max_n

@@ -19,7 +19,6 @@ from contextlib import contextmanager
 from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
-
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
 
@@ -122,7 +121,7 @@ def formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def startEnd(func_ = None, *, is_auth: bool = False):
+def startEnd(func_=None, *, is_auth: bool = False):
     """装饰器。"""
     def deco(func):
         @wraps(func)
@@ -171,7 +170,9 @@ def startEnd(func_ = None, *, is_auth: bool = False):
                             f"[{config.colorGray}SE:\033[0m{func.__name__}]"
                             f"end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
                     raise
+
         return wrapper
+
     if func_ is None:
         return deco
     return deco(func_)

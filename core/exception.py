@@ -8,7 +8,7 @@ class APIError(OttoBaseException):
     pass
 
 
-class ServerError(OttoBaseException):
+class ServerError(APIError):
     """系统错误 (服务器返回system_error)"""
     pass
 
@@ -18,217 +18,217 @@ class MissingArgumentError(OttoBaseException):
     pass
 
 
-class WrongPasswordError(OttoBaseException):
+class WrongPasswordError(APIError):
     """密码错误"""
     pass
 
 
-class PasswordMismatchError(OttoBaseException):
+class PasswordMismatchError(APIError):
     """两次密码不一致"""
     pass
 
 
-class EmailExistError(OttoBaseException):
+class EmailExistError(APIError):
     """邮箱已存在"""
     pass
 
 
-class VerificationCodeError(OttoBaseException):
+class VerificationCodeError(APIError):
     """验证码错误"""
     pass
 
 
-class EmailNotFoundError(OttoBaseException):
+class EmailNotFoundError(APIError):
     """邮箱不存在"""
     pass
 
 
-class EmailError(OttoBaseException):
+class EmailError(APIError):
     """邮箱错误"""
     pass
 
 
-class InvalidQQEmailError(OttoBaseException):
+class InvalidQQEmailError(APIError):
     """不是纯数字QQ邮箱"""
     pass
 
 
-class NumericTypeError(OttoBaseException):
+class NumericTypeError(APIError):
     """错误的类型数值"""
     pass
 
 
-class NumberTooBigError(OttoBaseException):
+class NumberTooBigError(APIError):
     """数量太大"""
     pass
 
 
-class VIDError(OttoBaseException):
+class VIDError(APIError):
     """错误的VID"""
     pass
 
 
-class BIDError(OttoBaseException):
+class BIDError(APIError):
     """错误的BID"""
     pass
 
 
-class UIDError(OttoBaseException):
+class UIDError(APIError):
     """错误的UID"""
     pass
 
 
-class DanmakuIDError(OttoBaseException):
+class DanmakuIDError(APIError):
     """错误的弹幕ID"""
     pass
 
 
-class CIDError(OttoBaseException):
+class CIDError(APIError):
     """错误的频道ID"""
     pass
 
 
-class NotReviewerError(OttoBaseException):
+class NotReviewerError(APIError):
     """不是审核"""
     pass
 
 
-class InvalidFollowingUIDError(OttoBaseException):
+class InvalidFollowingUIDError(APIError):
     """非法的关注对象"""
     pass
 
 
-class TooManyFollowingsError(OttoBaseException):
+class TooManyFollowingsError(APIError):
     """关注数大于888人"""
     pass
 
 
-class InvalidTokenError(OttoBaseException):
+class InvalidTokenError(APIError):
     """非法token"""
     pass
 
 
-class InvalidReceiverError(OttoBaseException):
+class InvalidReceiverError(APIError):
     """错误的接受者"""
     pass
 
 
-class ContentTooShortError(OttoBaseException):
+class ContentTooShortError(APIError):
     """内容太短"""
     pass
 
 
-class ContentTooLongError(OttoBaseException):
+class ContentTooLongError(APIError):
     """内容太长"""
     pass
 
 
-class SensitiveWordError(OttoBaseException):
+class SensitiveWordError(APIError):
     """触发敏感词 (=warn)"""
     pass
 
 
-class MessageIDError(OttoBaseException):
+class MessageIDError(APIError):
     """错误的消息ID"""
     pass
 
 
-class NoPermissionError(OttoBaseException):
+class NoPermissionError(APIError):
     """没有权限"""
     pass
 
 
-class InvalidParentIDError(OttoBaseException):
+class InvalidParentIDError(APIError):
     """非法父评论ID"""
     pass
 
 
-class InvalidParentError(OttoBaseException):
+class InvalidParentError(APIError):
     """非法父评论（将子评论作为父评论）"""
     pass
 
 
-class InvalidUsernameError(OttoBaseException):
+class InvalidUsernameError(APIError):
     """非法用户名"""
     pass
 
 
-class UsernameExistError(OttoBaseException):
+class UsernameExistError(APIError):
     """用户名已存在"""
     pass
 
 
-class InvalidPhoneError(OttoBaseException):
+class InvalidPhoneError(APIError):
     """非法手机号"""
     pass
 
 
-class InvalidQQError(OttoBaseException):
+class InvalidQQError(APIError):
     """非法QQ号"""
     pass
 
 
-class InvalidSexError(OttoBaseException):
+class InvalidSexError(APIError):
     """非法性别"""
     pass
 
 
-class InvalidIntroError(OttoBaseException):
+class InvalidIntroError(APIError):
     """非法简介"""
     pass
 
 
-class TitleTooShortError(OttoBaseException):
+class TitleTooShortError(APIError):
     """标题太短"""
     pass
 
 
-class TitleTooLongError(OttoBaseException):
+class TitleTooLongError(APIError):
     """标题太长"""
     pass
 
 
-class TagTooFewError(OttoBaseException):
+class TagTooFewError(APIError):
     """标签太少"""
     pass
 
 
-class TagTooManyError(OttoBaseException):
+class TagTooManyError(APIError):
     """标签太多"""
     pass
 
 
-class InvalidTagError(OttoBaseException):
+class InvalidTagError(APIError):
     """非法标签"""
     pass
 
 
-class InvalidCategoryError(OttoBaseException):
+class InvalidCategoryError(APIError):
     """非法分区"""
     pass
 
 
-class InvalidFileFormatError(OttoBaseException):
+class InvalidFileFormatError(APIError):
     """非法文件格式"""
     pass
 
 
-class FileTooBigError(OttoBaseException):
+class FileTooBigError(APIError):
     """文件太大"""
     pass
 
 
-class FileNotProvidedError(OttoBaseException):
+class FileNotProvidedError(APIError):
     """缺少文件"""
     pass
 
 
-class InvalidDanmakuError(OttoBaseException):
+class InvalidDanmakuError(APIError):
     """非法的弹幕参数"""
     pass
 
 
-class ResourceNotFoundError(OttoBaseException):
+class ResourceNotFoundError(APIError):
     """资源不存在"""
     pass
 
@@ -243,47 +243,47 @@ class MethodNotAllowed(OttoBaseException):
     pass
 
 
-class VideoNotFoundError(OttoBaseException):
+class VideoNotFoundError(APIError):
     """视频不存在或不属于当前用户"""
     pass
 
 
-class InvalidCoverURLError(OttoBaseException):
+class InvalidCoverURLError(APIError):
     """封面URL无效"""
     pass
 
 
-class InvalidVideoURLError(OttoBaseException):
+class InvalidVideoURLError(APIError):
     """视频URL无效"""
     pass
 
 
-class InvalidDurationError(OttoBaseException):
+class InvalidDurationError(APIError):
     """视频时长无效"""
     pass
 
 
-class DraftNotFoundError(OttoBaseException):
+class DraftNotFoundError(APIError):
     """草稿不存在"""
     pass
 
 
-class DraftExistsError(OttoBaseException):
+class DraftExistsError(OAPIError):
     """草稿已存在"""
     pass
 
 
-class IndexConflictError(OttoBaseException):
+class IndexConflictError(APIError):
     """索引冲突"""
     pass
 
 
-class NotChannelMemberError(OttoBaseException):
+class NotChannelMemberError(APIError):
     """不是频道成员"""
     pass
 
 
-class MissingExtensionParameterError(OttoBaseException):
+class MissingExtensionParameterError(APIError):
     """缺少扩展参数"""
     pass
 
@@ -293,7 +293,7 @@ class ExhaustedRetriesError(OttoBaseException):
     pass
 
 
-class NotInCollectionError(OttoBaseException):
+class NotInCollectionError(APIError):
     """请求的对象不在合集中"""
     pass
 
