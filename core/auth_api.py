@@ -4,9 +4,10 @@ from typing import Callable
 from getpass import getpass
 
 
-@startEnd
+@startEnd(is_auth=True)
 def loginRaw(uid_email: str, password: str, config: Config = None) -> dict:
-    """登录。"""
+    """登录。
+    noStartEnd此时无效(固定为True)，以防止日志泄露账号密码。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/login/"
@@ -29,21 +30,23 @@ def checkinRaw(config: Config = None) -> dict:
     return _request('post', 'json', 'signinRaw', url, config, {"token": config.token})
 
 
-@startEnd
+@startEnd(is_auth=True)
 def sendVerificationCode(e_mail: str, config: Config = None) -> None:
-    """发送｢邮箱验证码｣ (用于重置密码)。"""
+    """发送｢邮箱验证码｣ (用于重置密码)。
+    noStartEnd此时无效(固定为True)，以防止日志泄露账号密码。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/password-reset/verification-code/"
     _request('post', 'json', 'sendVerificationCode', url, config, {'email': e_mail})
 
 
-@startEnd
+@startEnd(is_auth=True)
 def resetPassword(e_mail: str, new_pswd: str, verify_code_: Callable[[None], int] = None, config: Config = None) -> None:
     """更改密码。
     因为无法获取验证码，所以需要一个函数(verify_code_)来返回验证码。
     默认为getpass('[resetPassword]input verification code: ')。
-    此函数会等待verify_code_返回结果再继续。"""
+    此函数会等待verify_code_返回结果再继续。
+    noStartEnd此时无效(固定为True)，以防止日志泄露账号密码。"""
     if verify_code_ is None:
         verify_code_ = lambda: getpass('[resetPassword]input verification code: ')
     if config is None:

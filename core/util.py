@@ -122,56 +122,59 @@ def formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def startEnd(func):
+def startEnd(func_ = None, *, is_auth: bool = False):
     """装饰器。"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # 获取参数绑定
-        sig = inspect.signature(func)
-        bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
+    def deco(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # 获取参数绑定
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
 
-        # 格式化参数为 {key=value} 形式
-        params = bound_args.arguments
-        config = params.get('config') or getGlobalConfig()
-        # print("[debug/se]", func.__name__, params)
+            # 格式化参数为 {key=value} 形式
+            params = bound_args.arguments
+            config = params.get('config') or getGlobalConfig()
+            # print("[debug/se]", func.__name__, params)
 
-        if config.noStartEnd:
-            try:
-                result = func(*args, **kwargs)
-                return result
-            except Exception:
-                raise
+            if config.noStartEnd or is_auth:
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                except Exception:
+                    raise
 
-        else:
-            if config.verbose:
-                args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
-                cutted = args_str[:25]
-                print(f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                      f"start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
             else:
-                print(f"[{config.colorGray}SE:\033[0m{func.__name__}]start")
-            try:
-                result = func(*args, **kwargs)
                 if config.verbose:
-                    result_str = str(result).replace('\n', '\\n')
-                    cutted = result_str[:25]
-                    print(
-                        f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                        f"end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m"
-                    )
+                    args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
+                    cutted = args_str[:25]
+                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]"
+                          f"start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
                 else:
-                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]end")
-                return result
-            except Exception:
-                if config.verbose:
-                    exc_type, exc_value, _ = sys.exc_info()
-                    print(
-                        f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                        f"end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
-                raise
-
-    return wrapper
+                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]start")
+                try:
+                    result = func(*args, **kwargs)
+                    if config.verbose:
+                        result_str = str(result).replace('\n', '\\n')
+                        cutted = result_str[:25]
+                        print(
+                            f"[{config.colorGray}SE:\033[0m{func.__name__}]"
+                            f"end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m"
+                        )
+                    else:
+                        print(f"[{config.colorGray}SE:\033[0m{func.__name__}]end")
+                    return result
+                except Exception:
+                    if config.verbose:
+                        exc_type, exc_value, _ = sys.exc_info()
+                        print(
+                            f"[{config.colorGray}SE:\033[0m{func.__name__}]"
+                            f"end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
+                    raise
+        return wrapper
+    if func_ is None:
+        return deco
+    return deco(func_)
 
 
 def genKey(pswd: bytes, salt: bytes = None) -> tuple[bytes, bytes]:
