@@ -207,7 +207,6 @@ def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> t
     return mapped, tag_dicts, tagmap_dicts, page_dicts
 
 
-
 def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
     """记得conn.close()"""
     if config is None:

@@ -1,5 +1,7 @@
 from .util import startEnd, _request
 from .config import Config, getGlobalConfig
+from typing import Callable
+from getpass import getpass
 
 
 @startEnd
@@ -32,6 +34,23 @@ def sendVerificationCode(e_mail: str, config: Config = None) -> None:
     """发送｢邮箱验证码｣ (用于重置密码)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/auth/password-reset/verification-code"
+    url = f"https://{config.APIBase}api/auth/password-reset/verification-code/"
     _request('post', 'json', 'sendVerificationCode', url, config, {'email': e_mail})
+
+
+@startEnd
+def resetPassword(e_mail: str, new_pswd: str, verify_code_: Callable[[None], int] = None, config: Config = None) -> None:
+    """更改密码。
+    因为无法获取验证码，所以需要一个函数(verify_code_)来返回验证码。
+    默认为getpass('[resetPassword]input verification code: ')。
+    此函数会等待verify_code_返回结果再继续。"""
+    if verify_code_ is None:
+        verify_code_ = lambda: getpass('[resetPassword]input verification code: ')
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/auth/password-reset/"
+    sendVerificationCode(e_mail, config)
+    code = verify_code_()
+    data = {"email": e_mail, "passwordreset_verification_code": code, "pw": new_pswd, "confirm_pw": new_pswd}
+    _request('post', 'json', 'resetPassword', url, config, data)
 
