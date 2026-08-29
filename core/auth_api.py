@@ -31,16 +31,6 @@ def checkinRaw(config: Config = None) -> dict:
 
 
 @startEnd(is_auth=True)
-def sendVerificationCode(e_mail: str, config: Config = None) -> None:
-    """发送｢邮箱验证码｣ (用于重置密码)。
-    noStartEnd此时无效(固定为True)，以防止日志泄露账号密码。"""
-    if config is None:
-        config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/auth/password-reset/verification-code/"
-    _request('post', 'json', 'sendVerificationCode', url, config, {'email': e_mail})
-
-
-@startEnd(is_auth=True)
 def resetPassword(e_mail: str, new_pswd: str, verify_code_: Callable[[None], int] = None, config: Config = None) -> None:
     """更改密码。
     因为无法获取验证码，所以需要一个函数(verify_code_)来返回验证码。
@@ -52,7 +42,10 @@ def resetPassword(e_mail: str, new_pswd: str, verify_code_: Callable[[None], int
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/password-reset/"
-    sendVerificationCode(e_mail, config)
+
+    url = f"https://{config.APIBase}api/auth/password-reset/verification-code/"
+    _request('post', 'json', 'sendVerificationCode', url, config, {'email': e_mail})  # 发送验证码
+
     code = verify_code_()
     data = {"email": e_mail, "passwordreset_verification_code": code, "pw": new_pswd, "confirm_pw": new_pswd}
     _request('post', 'json', 'resetPassword', url, config, data)
