@@ -218,58 +218,6 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
     """自动获取chat_token并连接聊天室。需要token。
     threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread);
     否则返回ChatClient，此时需要手动调用client.run_forever()。
-    on_chat: 收到聊天信息时的回调函数。
-    on_online_change: 收到｢在线人数更改｣时的回调函数。
-    on_welcome: 收到欢迎信息时的回调函数。
-    on_message: 收到所有信息时的回调函数。
-    即使传递了on_chat / on_message / on_online_change参数, on_message仍会被调用。
-
-    on_message参数格式: 第一参数为WebSocket本身, 第二参数为dict.
-        dict格式:
-        'type': Literal['welcome', 'pong', 'online_count', 'message', 'message_deleted'],
-        其他键和值随type改变。
-
-        "type" == "pong": 无其它键值。
-        "type" == "welcome":
-            "is_admin": 0/1 -> 是否为管理员。
-            在默认行为下，此值会存储为client.is_admin: bool。
-            "mute": None/(??) -> 禁言状态(猜测)。
-            在默认行为下，此值会存储为client.mute。
-            "pinned_announcement": dict ->
-                "room": str -> 房间,
-                "content": str -> 公告内容,
-                "pinned": bool -> 是否置顶,
-                "updated_by": int -> 执行更新的uid,
-                "updated_at": str -> YYYY-MM-DD HH:MM:SS格式时间。
-                可以通过ohutils.parseTime()转换为时间戳。
-            在默认行为下，此值会存储为client.announcement。
-            "role": str (member/??) -> 角色。
-            在默认行为下，此值会存储为client.role。
-            "room": str -> 房间名称。
-            "uid": int -> token所对应uid。
-            在默认行为下，此值会存储为client.uid。
-            "username": str -> token所对应uid的用户名。
-            在默认行为下，此值会存储为client.name。
-        "type" == "online_count":
-            "room": str -> 房间名称。
-            "count": int -> 房间人数。
-        "type" == "message":
-            "id": int -> 消息id。
-            "room": str -> 房间名称。
-            "uid": int -> 发送者uid。
-            "username": str -> 发送者名称。
-            "content": str -> 发送者用户名。
-            "created_at": str -> YYYY-MM-DD HH:MM:SS格式时间。
-            可以通过ohutils.parseTime()转换为时间戳。
-            "reply": None|dict -> 回复的消息。
-                "id": int -> 源消息id。
-                "uid": int -> 源消息发送者uid。
-                "username": str -> 源消息发送者用户名。
-                "content": str -> 源消息文本。
-                "deleted": bool -> 源消息是否已删除。
-        "type" == "message_deleted":
-            "id": int -> 消息id。
-            "room": str -> 房间名称。
     """
     if config is None:
         config = getGlobalConfig()

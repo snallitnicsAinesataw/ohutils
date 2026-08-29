@@ -268,7 +268,7 @@ class DraftNotFoundError(APIError):
     pass
 
 
-class DraftExistsError(OAPIError):
+class DraftExistsError(APIError):
     """草稿已存在"""
     pass
 
@@ -295,6 +295,11 @@ class ExhaustedRetriesError(OttoBaseException):
 
 class NotInCollectionError(APIError):
     """请求的对象不在合集中"""
+    pass
+
+
+class APINotFoundError(APIError):
+    """API不存在"""
     pass
 
 
@@ -364,4 +369,5 @@ mappings = {
     'Missing_extension_parameter': MissingExtensionParameterError,
     'seiga_not_in_collection': NotInCollectionError, 'blog_not_in_collection': NotInCollectionError,
     'video_not_in_collection': NotInCollectionError,
+    'Not found': APINotFoundError,
 }
