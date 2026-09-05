@@ -1,6 +1,6 @@
 import random
 import time
-from .util import _request, startEnd, Comment
+from .util import _request, startEnd, Comment, logger
 from .config import Config, getGlobalConfig
 import os
 from typing import Literal
@@ -109,12 +109,11 @@ def getAllSeigaComments(sid: int, parent_scid: int = 0, config: Config = None) -
     all_comments, offset = [], 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[getAllSeigaComments]curr offset: {offset}")
+            logger.info(f"[getAllSeigaComments]curr offset: {offset}")
         try:
             comment_list = _getSeigaCommentList(sid, parent_scid, offset, config)
         except ExhaustedRetriesError as e:
-            if config.verbose:
-                print(f"[getAllSeigaComments]{config.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllSeigaComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?
@@ -134,7 +133,7 @@ def getAllSeigaComments(sid: int, parent_scid: int = 0, config: Config = None) -
             )
             if child_num > 0:
                 if config.verbose:
-                    print(f"[getAllSeigaComments]Get replies of scid{comment.cid}...")
+                    logger.info(f"[getAllSeigaComments]Get replies of scid{comment.cid}...")
                 comment.replies = getAllSeigaComments(sid, comment.cid, config)
             all_comments.append(comment)
         if len(comment_list) < config.commentPerReq:

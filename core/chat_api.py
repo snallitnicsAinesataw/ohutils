@@ -2,7 +2,7 @@ import json
 import threading
 import time
 from threading import Thread
-from .util import startEnd, _request
+from .util import startEnd, _request, logger
 from .config import Config, getGlobalConfig
 import websocket
 from typing import Optional, Callable, Any, Union, Tuple
@@ -65,23 +65,25 @@ class ChatClient(websocket.WebSocketApp):
         def heartbeat():
             while self._running:
                 time.sleep(self._beat_interval)
-                if self._pinged and self._config.verbose:
-                    print(f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
+                if self._pinged:
+                    logger.error(
+                        f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
                 if self.sock and self.sock.connected:
                     self._pinged = True
                     self.send(json.dumps({'type': 'ping'}))  # 发送心跳包
+
         threading.Thread(target=heartbeat, daemon=True).start()  # 启动新线程
         if self._config.verbose:
-            print(f"[ChatClient]connected to room '{self.room}'")
+            logger.info(f"[ChatClient]connected to room '{self.room}'")
 
     def _on_message(self, ws, msg: str):
         # 默认函数。
         data: dict = json.loads(msg)
         type_ = data.get('type')
         if type_ == 'pong':
-            if not self._pinged and self._config.verbose:
-                print('[ChatClient/heartbeat]'
-                      f"{self._config.colorYellow}receive pong without ping. This shouldn't happen.\033[0m")
+            if not self._pinged:
+                logger.warning('[ChatClient/heartbeat]'
+                               f"{self._config.colorYellow}receive pong without ping. This shouldn't happen.\033[0m")
             self._pinged = False
         elif type_ == 'welcome':
             if self._user_on_welcome:
@@ -94,36 +96,36 @@ class ChatClient(websocket.WebSocketApp):
                 self.announcement: Optional[dict] = data.get('pinned_announcement')
                 self.role = data.get('role')
                 if self._config.verbose:
-                    print(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
+                    logger.info(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
             if self._user_on_online_change:
                 self._user_on_online_change(ws, data)
             elif self._config.verbose:
-                print('[ChatClient/msg:online]'
-                      f'{self._config.colorGray}Online count:{data["count"]} @{round(time.time(), 3)}\033[0m')
+                logger.info('[ChatClient/msg:online]'
+                            f'{self._config.colorGray}Online count:{data["count"]} @{round(time.time(), 3)}\033[0m')
         elif type_ == 'message':
             if self._user_on_chat:
                 self._user_on_chat(ws, data)
             elif self._config.verbose:
-                print('[ChatClient/msg:chat]'
-                      f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
-                      (f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else ''))
+                logger.info('[ChatClient/msg:chat]'
+                            f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
+                            (f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else ''))
         elif type_ == 'message_deleted' and self._config.verbose:
-            print(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
+            logger.info(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
         if self._user_on_message:
             self._user_on_message(ws, data)
 
     def _on_error(self, ws, e):
         if self._user_on_error:
             self._user_on_error(ws, e)
-        elif self._config.verbose:
-            print(f'[ChatClient/error]{self._config.colorRed}{e}\033[0m')
+        else:
+            logger.error(f'[ChatClient/error]{self._config.colorRed}{e}\033[0m')
 
     def _on_close(self, ws, code, msg):
         if self._user_on_close:
             self._user_on_close(ws, code, msg)
         elif self._config.verbose:
-            print('[ChatClient]connection closed' + (f' with code {code}' if code is not None else ''))
+            logger.info('[ChatClient]connection closed' + (f' with code {code}' if code is not None else ''))
 
     def _on_ping(self, *args, **kwargs):
         if self._user_on_ping:
@@ -137,7 +139,7 @@ class ChatClient(websocket.WebSocketApp):
         if self._user_on_reconnect:
             self._user_on_reconnect(ws)
         elif self._config.verbose:
-            print(f'[ChatClient/reconnect]{self._config.colorYellow}reconnect triggered\033[0m')
+            logger.info(f'[ChatClient/reconnect]{self._config.colorYellow}reconnect triggered\033[0m')
 
     def stop(self):
         """停止心跳并关闭连接。"""
@@ -248,7 +250,8 @@ def blockUser(uid: int, chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/blocks/"
-    return _request('post', 'json', 'blockUser', url, config=config, is_chat=True, chat_token=chat_token, data={'uid': uid})
+    return _request('post', 'json', 'blockUser', url, config=config, is_chat=True, chat_token=chat_token,
+                    data={'uid': uid})
 
 
 @startEnd

@@ -1,7 +1,7 @@
 import random
 import requests
 from ..core.config import Config, getGlobalConfig
-from ..core.util import Comment, BlogEntry, getVersion, APIError, _mergeBlogData, decrypt, genKey
+from ..core.util import Comment, BlogEntry, getVersion, APIError, _mergeBlogData, decrypt, genKey, logger
 from typing import List, Dict, Tuple, TypeVar
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
@@ -206,7 +206,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(struct.pack('<I', crc32))
 
     if config.verbose:
-        print(f"[_writeObarc]Write complete in v{version}: {filename}, CRC32: {crc32:08X}")
+        logger.info(f"[_writeObarc/v{version}]Write complete: {filename}, CRC32: {crc32:08X}")
     return filename
 
 
@@ -356,36 +356,34 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     if os.path.exists(file_path):
         if policy == 'keep':
             if verbose:
-                print(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, skip due to 'keep' policy\033[0m")
+                logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, skip due to 'keep' policy\033[0m")
             return file_path, False
 
     if verbose:
-        print(f"[_archiveBlog/v{version}]Get bid ob{bid}...")
+        logger.info(f"[_archiveBlog/v{version}]Get bid ob{bid}...")
     blog_data, comments = {}, []  # 默认值。在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
     try:
         blog_data = getBlogDetail(bid)
     except BIDError as e:
-        if verbose:
-            print(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
+        logger.error(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
     else:
         time.sleep(random.uniform(*config.blogToCommentDelay))
         if verbose:
-            print(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
+            logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
         try:
             comments = getAllBlogComments(bid)
         except requests.RequestException as e:
-            if verbose:
-                print(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
+            logger.error(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
             return file_path, True
         if verbose:
-            print(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
+            logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
 
     if not os.path.exists(file_path) or policy == 'override':
         return _writeObarc(version, bid, blog_data, comments, config), True
 
     if policy == 'merge':
         if verbose:
-            print(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
+            logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
 
         ver = getVersion(os.path.join(config.savePath, config.fileName.format(bid=bid)))
         old_blog = _loadObarc(ver, bid, config)
@@ -393,7 +391,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         merged_comments = mergeComments(old_blog.comments, comments)
         file_name = _writeObarc(version, bid, merged_blog, merged_comments, config)
         if verbose:
-            print(f"[_archiveBlog/v{version}]File {file_name} merge complete")
+            logger.info(f"[_archiveBlog/v{version}]File {file_name} merge complete")
     return file_path, True
 
 

@@ -2,7 +2,7 @@ import glob
 import re
 import os
 import json
-from ..core.util import getVersion, flattenComments
+from ..core.util import getVersion, flattenComments, logger
 from .obarc import loadObarc
 from ..core.config import Config, getGlobalConfig
 
@@ -36,8 +36,7 @@ def buildBlogIndex(config: Config = None):
                 'view': blog.view_count
             }
         except Exception as e:
-            if config.verbose:
-                print(f"[buildUserCommentIdx]Skip ob{bid}: {e}")
+            logger.warning(f"[buildUserCommentIdx]Skip ob{bid}: {e}")
     with open(os.path.join(config.indexPath, config.indexName), "w") as f:
         json.dump(index, f)
     return True
@@ -62,8 +61,7 @@ def buildUserCommentIdx(config: Config = None):
                     'reply_count': c.reply_count
                 })
         except Exception as e:
-            if config.verbose:
-                print(f"[buildUserCommentIdx]Skip ob{bid}: {e}")
+            logger.warning(f"[buildUserCommentIdx]Skip ob{bid}: {e}")
     with open(os.path.join(config.indexPath, config.userCommentIdxName), "w") as f:
         json.dump(index, f)
     return True
@@ -94,8 +92,7 @@ def buildOBCCommentIdx(config: Config = None):
                     'reply_count': c.reply_count,
                 }
         except Exception as e:
-            if config.verbose:
-                print(f"[buildOBCCommentIdx]Skip ob{bid}: {e}")
+            logger.warning(f"[buildOBCCommentIdx]Skip ob{bid}: {e}")
     with open(os.path.join(config.indexPath, config.OBCCommentIdxName), "w") as f:
         json.dump(index, f)
     return True
@@ -129,8 +126,7 @@ def buildAllIndexes(config: Config = None):
                 c_ou[uid].append({'bcid': c.cid, 'bid': bid, 'timestamp': c.timestamp, 'content': c.content,
                                   'reply_count': c.reply_count})
         except Exception as e:
-            if config.verbose:
-                print(f"[buildAllIndexes]Skip ob{bid}: {e}")
+            logger.warning(f"[buildAllIndexes]Skip ob{bid}: {e}")
     with open(os.path.join(config.indexPath, config.indexName), "w") as f:
         json.dump(ob, f)
     with open(os.path.join(config.indexPath, config.userCommentIdxName), "w") as f:

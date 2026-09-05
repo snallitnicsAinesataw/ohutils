@@ -12,6 +12,13 @@ from .core.util import (
     appSim, useConfig,
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
+import logging
+if not logging.root.handlers:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s.%(msecs)03d %(levelname).1s]%(message)s',
+        datefmt='%H:%M:%S'
+    )
 
 __version__ = "0.8.0"
 F_ENCRYPT_CONTENT = 1

@@ -1,4 +1,4 @@
-from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request
+from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request, logger
 from .exception import ExhaustedRetriesError
 from .config import Config, getGlobalConfig
 import requests
@@ -48,13 +48,12 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
     all_comments, offset = [], 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[getAllBlogComments]curr offset: {offset}")
+            logger.info(f"[getAllBlogComments]curr offset: {offset}")
 
         try:
             comment_list = _getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            if config.verbose:
-                print(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
 
         if not comment_list:
@@ -76,7 +75,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
 
             if child_num > 0:
                 if config.verbose:
-                    print(f"[getAllBlogComments]Get replies of bcid{comment.cid}...")
+                    logger.info(f"[getAllBlogComments]Get replies of bcid{comment.cid}...")
                 comment.replies = getAllBlogComments(bid, comment.cid, include_pinned, config)
             all_comments.append(comment)
 
@@ -165,12 +164,11 @@ def getAllFavBlogs(return_dict: bool = False, config: Config = None) -> Union[li
     offset = 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[getAllFavBlogs]curr offset: {offset}")
+            logger.info(f"[getAllFavBlogs]curr offset: {offset}")
         try:
             data = getFavBlogs(offset, config)
         except ExhaustedRetriesError as e:
-            if config.verbose:
-                print(f"[getAllFavBlogs]{config.colorRed}fail to get all favorite blogs: {e}")
+            logger.error(f"[getAllFavBlogs]{config.colorRed}fail to get all favorite blogs: {e}")
             return []
         blog_list = data['data'].get("blog_list", [])
         if not blog_list:

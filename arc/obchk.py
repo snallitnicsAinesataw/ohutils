@@ -1,4 +1,4 @@
-from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey
+from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey, logger
 from ..core.config import Config, getGlobalConfig
 import zlib
 import struct
@@ -31,8 +31,7 @@ class BlogChunk:
                 try:
                     offset = struct.unpack('<Q', f.read(8))[0]
                 except Exception as e:
-                    if config.verbose:
-                        print(f"[BlogChunk/load]failed to read offset for bid={bid}: {e}\033[0m")
+                    logger.warning(f"[BlogChunk/load]failed to read offset for bid={bid}: {e}\033[0m")
                     continue
                 if offset == 0:
                     continue
@@ -156,8 +155,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         file = os.path.join(config.savePath, config.fileName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
-            if config.verbose:
-                print(f'[buildChunk]{config.colorYellow}File does not exist: {file}\033[0m')
+            logger.warning(f'[buildChunk]{config.colorYellow}File does not exist: {file}\033[0m')
             continue
         try:
             data = serializeBlog(bid)
@@ -169,7 +167,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
             data_blocks.append(data)
             current_offset += len(data)
         except Exception as e:
-            print(f"[buildChunk]Skip ob{bid}: {e}")
+            logger.warning(f"[buildChunk]Skip ob{bid}: {e}")
     entries.append(current_offset)  # 此处
 
     lookup_table = b''
@@ -214,7 +212,8 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         f.write(struct.pack('<Q', total_size))
         f.seek(0x13)  # CRC32偏移
         f.write(struct.pack('<I', crc32))
-    print(f"[buildChunk]Chunk built: {filename}")
+    if config.verbose:
+        logger.info(f"[buildChunk]Chunk built: {filename}")
 
 
 def loadChunk(filepath: str, config: Config = None) -> BlogChunk:

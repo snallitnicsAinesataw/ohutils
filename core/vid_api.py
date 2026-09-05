@@ -1,4 +1,4 @@
-from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime
+from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger
 from .config import Config, getGlobalConfig
 from typing import Literal
 from .exception import ExhaustedRetriesError, APIError
@@ -85,12 +85,11 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
     all_comments, offset = [], 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[getAllVideoComments]curr offset: {offset}")
+            logger.info(f"[getAllVideoComments]curr offset: {offset}")
         try:
             comment_list = _getVideoCommentList(vid, parent_vcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            if config.verbose:
-                print(f"[getAllVideoComments]{config.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllVideoComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?
@@ -109,7 +108,7 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
             )
             if child_num > 0:
                 if config.verbose:
-                    print(f"[getAllVideoComments]Get replies of vcid{comment.cid}...")
+                    logger.info(f"[getAllVideoComments]Get replies of vcid{comment.cid}...")
                 comment.replies = getAllVideoComments(vid, comment.cid, include_pinned, config)
             all_comments.append(comment)
         if len(comment_list) < config.commentPerReq:

@@ -18,9 +18,11 @@ from .config import Config, getGlobalConfig, setGlobalConfig
 from contextlib import contextmanager
 from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+import logging
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -134,7 +136,6 @@ def startEnd(func_=None, *, is_auth: bool = False):
             # 格式化参数为 {key=value} 形式
             params = bound_args.arguments
             config = params.get('config') or getGlobalConfig()
-            # print("[debug/se]", func.__name__, params)
 
             if not config.useStartEnd or is_auth:
                 try:
@@ -147,30 +148,23 @@ def startEnd(func_=None, *, is_auth: bool = False):
                 if config.verbose:
                     args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
                     cutted = args_str[:25]
-                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                          f"start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
+                    logger.debug(f"[{func.__name__}]start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
                 else:
-                    print(f"[{config.colorGray}SE:\033[0m{func.__name__}]start")
+                    logger.debug(f"[{func.__name__}]start")
                 try:
                     result = func(*args, **kwargs)
                     if config.verbose:
                         result_str = str(result).replace('\n', '\\n')
                         cutted = result_str[:25]
-                        print(
-                            f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                            f"end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m"
-                        )
+                        logger.debug(f"[{func.__name__}]end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m")
                     else:
-                        print(f"[{config.colorGray}SE:\033[0m{func.__name__}]end")
+                        logger.debug(f"[{func.__name__}]end")
                     return result
                 except Exception:
                     if config.verbose:
                         exc_type, exc_value, _ = sys.exc_info()
-                        print(
-                            f"[{config.colorGray}SE:\033[0m{func.__name__}]"
-                            f"end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
+                        logger.debug(f"[{func.__name__}]end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
                     raise
-
         return wrapper
 
     if func_ is None:
@@ -253,9 +247,9 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 new_query = urlencode(query, doseq=True)
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
-                print(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
+                logger.info(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
             headers = config.headers
-            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.6.0'  # 水印，大概
+            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.8.0'  # 水印，大概
             if chat_token is not None:
                 headers['Authorization'] = 'Bearer ' + chat_token
             if method == 'get':
@@ -291,8 +285,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 raise ExhaustedRetriesError(
                     f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
                     f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
-            if config.verbose:
-                print(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
+            logger.warning(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
             time.sleep(random.uniform(*config.retryDelay))
     raise ExhaustedRetriesError(
         f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
@@ -394,7 +387,7 @@ def _recur_request(f_name: str, recur_func: Callable[[int], list[_T]],
     all_, offset = [], 0
     while True:
         if offset != 0 and config.verbose:
-            print(f"[{f_name}]curr offset: {offset}")
+            logger.info(f"[{f_name}]curr offset: {offset}")
         list_ = recur_func(offset)
         if not list_:
             break

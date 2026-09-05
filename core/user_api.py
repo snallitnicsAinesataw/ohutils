@@ -1,5 +1,5 @@
 import random
-from .util import _request, startEnd, _recur_request, BlogEntry
+from .util import _request, startEnd, _recur_request, BlogEntry, logger
 from .exception import OttoBaseException
 from .config import Config, getGlobalConfig
 from .exception import UIDError
@@ -51,7 +51,7 @@ def getAllUserBlog(uid: int, config: Config = None) -> list[dict]:
                                lambda off: getUserBlogList(uid, off, config),
                                config.userBlogPerReq, config.blogBatchDelay, config)
     if config.verbose:
-        print(f"[getAllUserBlog]get {len(all_blogs)} blog(s) of ou{uid}")
+        logger.info(f"[getAllUserBlog]get {len(all_blogs)} blog(s) of ou{uid}")
     return all_blogs
 
 
@@ -74,7 +74,7 @@ def findLatestUser(max_n: int = 10 ** 6, config: Config = None) -> int:
     while lo < hi:
         mid = (lo + hi) // 2
         if config.verbose:
-            print(f"[findLatestUser]test ou{mid}...")
+            logger.info(f"[findLatestUser]test ou{mid}...")
         if isUserAlive(mid, config) or mid in died:
             lo = mid + 1
         else:
@@ -111,7 +111,7 @@ def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
                           lambda off: getFollowersList(uid, off, config),
                           config.userPerReq, config.userBatchDelay, config)
     if config.verbose:
-        print(f"[getAllFollowers]get {len(all_)} follower(s) of ou{uid}")
+        logger.info(f"[getAllFollowers]get {len(all_)} follower(s) of ou{uid}")
     return all_
 
 
@@ -135,5 +135,5 @@ def getAllFollowings(uid: int, config: Config = None) -> list[dict]:
                           lambda off: getFollowingsList(uid, off, config),
                           config.userPerReq, config.userBatchDelay, config)
     if config.verbose:
-        print(f"[getAllFollowings]get {len(all_)} following(s) of ou{uid}")
+        logger.info(f"[getAllFollowings]get {len(all_)} following(s) of ou{uid}")
     return all_

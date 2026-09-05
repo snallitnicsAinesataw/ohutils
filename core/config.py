@@ -4,6 +4,16 @@ import os
 
 
 @dataclass
+class _IConfig:
+    # 内部配置，存一些不需要暴露的字段。
+    colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
+    colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
+    colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
+    colorMagenta: str = field(default_factory=lambda: '\033[95m', repr=False, compare=False)
+    colorClear: str = field(default_factory=lambda: '\033[0m', repr=False, compare=False)
+
+
+@dataclass
 class Config:
     APIBase: str = "api.ottohub.cn/"
     chatAPIBase: str = "api-chat.ottohub.cn/"
@@ -15,6 +25,9 @@ class Config:
     colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
     colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
     colorMagenta: str = field(default_factory=lambda: '\033[95m', repr=False, compare=False)
+    # 没想好拿这些color怎么办。将颜色输出到文件会污染日志，写了richLog但是没作用。先放着。
+    # 我是想在richLog=False时将这些color设置为''以跳过颜色输出的。
+    # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
 
     headers: dict = field(default_factory=lambda: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
@@ -75,6 +88,9 @@ class Config:
     blogBatchDelay: tuple[float, float] = (0.4, 0.8)
     retryDelay: tuple[float, float] = (0.7, 1.1)
     userBatchDelay: tuple[float, float] = (0.6, 0.9)
+
+    _in_cfg: _IConfig = field(default_factory=_IConfig, repr=False, compare=False)
+    richLog: bool = True
 
     @classmethod
     def fromDict(cls, d: dict):
