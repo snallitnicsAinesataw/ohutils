@@ -303,6 +303,11 @@ class APINotFoundError(APIError):
     pass
 
 
+class GoreNotAllowedError(APIError):
+    """不允许请求is_gore=1内容"""
+    pass  # 不理解为什么不让。
+
+
 mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
@@ -370,4 +375,5 @@ mappings = {
     'seiga_not_in_collection': NotInCollectionError, 'blog_not_in_collection': NotInCollectionError,
     'video_not_in_collection': NotInCollectionError,
     'Not found': APINotFoundError,
+    'gore_not_allowed': GoreNotAllowedError,
 }
