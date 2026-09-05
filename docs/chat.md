@@ -12,15 +12,15 @@
  - **参数**: *可选* `config` -> Config对象。需要在对象中包含有效`token`。不提供则使用全局配置或`useConfig(...)`设定的配置。
  - **返回**: `chat_token` (e.g. `'f339af2b...50a5'`)。
 
-## 2.1.2 meRaw()
-`meRaw(chat_token: str, config: Config = None) -> dict`
+## 2.1.2 me()
+`me(chat_token: str, config: Config = None) -> dict`
 
 获取提供的`chat_token`对应用户的信息原始数据。
 
  - **参数**:
    - `chat_token: str` -> 聊天室token。
    - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
- - **返回**: 字典`data{uid: int, username: str, is_admin: int, mute}`。
+ - **返回**: 字典`{uid: int, username: str, is_admin: int, mute}`。
  - **注**: `mute`字段当前未知具体含义。
 
 ## 2.1.3 getChats()

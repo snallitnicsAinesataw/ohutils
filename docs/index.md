@@ -10,5 +10,7 @@
 ---
 [2.1 聊天室API](chat.md)
 
+[2.2 登录相关API](auth.md)
+
 ---
 [附 I: 导出文件定义](definitions.md)

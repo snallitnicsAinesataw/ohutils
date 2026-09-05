@@ -50,7 +50,7 @@ def resetPassword(e_mail: str, new_pswd: str, config: Config = None, *, verify_c
     _request('post', 'json', 'resetPassword', url2, config=config, data={'email': e_mail})  # 发送验证码
 
     code = verify_code_()
-    data = {"email": e_mail, "passwordreset_verification_code": code, "pw": new_pswd, "confirm_pw": new_pswd}
+    data = {"email": e_mail, "passwordreset_verification_code": str(code), "pw": new_pswd, "confirm_pw": new_pswd}
     _request('post', 'json', 'resetPassword', url, config=config, data=data)
 
 
@@ -72,5 +72,5 @@ def register(e_mail: str, pswd: str, config: Config = None, *, verify_code_: Cal
 
     code = verify_code_()
     data = {"email": e_mail, "register_verification_code": str(code), "pw": pswd, "confirm_pw": pswd}
-    _request('post', 'json', 'register', url, config=config, data=data)
+    return _request('post', 'json', 'register', url, config=config, data=data)
 

@@ -19,6 +19,8 @@ if not logging.root.handlers:
         format='[%(asctime)s.%(msecs)03d %(levelname).1s]%(message)s',
         datefmt='%H:%M:%S'
     )
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
 
 __version__ = "0.8.0"
 F_ENCRYPT_CONTENT = 1

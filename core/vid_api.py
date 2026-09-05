@@ -89,7 +89,7 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         try:
             comment_list = _getVideoCommentList(vid, parent_vcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllVideoComments]{config.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllVideoComments]{config._in_cfg.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?

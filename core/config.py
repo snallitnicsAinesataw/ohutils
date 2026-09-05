@@ -6,10 +6,10 @@ import os
 @dataclass
 class _IConfig:
     # 内部配置，存一些不需要暴露的字段。
+    # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
     colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
     colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
     colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
-    colorMagenta: str = field(default_factory=lambda: '\033[95m', repr=False, compare=False)
     colorClear: str = field(default_factory=lambda: '\033[0m', repr=False, compare=False)
 
 
@@ -20,14 +20,6 @@ class Config:
 
     password: bytes = field(default_factory=lambda: b'example_password', repr=False, compare=False)
     salt: bytes = field(default_factory=lambda: b'0123456789abcdef', repr=False, compare=False)
-
-    colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
-    colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
-    colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
-    colorMagenta: str = field(default_factory=lambda: '\033[95m', repr=False, compare=False)
-    # 没想好拿这些color怎么办。将颜色输出到文件会污染日志，写了richLog但是没作用。先放着。
-    # 我是想在richLog=False时将这些color设置为''以跳过颜色输出的。
-    # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
 
     headers: dict = field(default_factory=lambda: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
@@ -71,7 +63,7 @@ class Config:
     seigaPath: str = 'D:\\_ARCHIVE\\SEIGA\\'
     seigaName: str = "sid{sid}_p{page}.jpg"
 
-    SQLName: str = "oh_general.db"
+    SQLName: str = "ohutils.db"
     useSQL: bool = False
 
     chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
@@ -90,7 +82,7 @@ class Config:
     userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
     _in_cfg: _IConfig = field(default_factory=_IConfig, repr=False, compare=False)
-    richLog: bool = True
+    _richLog: bool = True
 
     @classmethod
     def fromDict(cls, d: dict):
@@ -115,6 +107,23 @@ class Config:
     def replace(self, **changes):
         """临时替换配置。其实就是dataclasses.replace()。"""
         return replace(self, **changes)
+
+    @property
+    def richLog(self) -> bool:
+        return self._richLog
+
+    @richLog.setter
+    def richLog(self, value: bool):
+        self._richLog = value
+        if not value:
+            # 设置为False时，覆盖color*
+            self._in_cfg._orig_in_cfg = self._in_cfg
+            self._in_cfg.colorRed = ''
+            self._in_cfg.colorGray = ''
+            self._in_cfg.colorYellow = ''
+            self._in_cfg.colorClear = ''
+        else:
+            self._in_cfg = self._in_cfg._orig_in_cfg
 
 
 _DEFAULT_CONFIG = Config()

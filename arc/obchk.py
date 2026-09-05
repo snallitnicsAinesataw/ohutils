@@ -155,7 +155,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         file = os.path.join(config.savePath, config.fileName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
-            logger.warning(f'[buildChunk]{config.colorYellow}File does not exist: {file}\033[0m')
+            logger.warning(f'[buildChunk]{config._in_cfg.colorYellow}File does not exist: {file}\033[0m')
             continue
         try:
             data = serializeBlog(bid)

@@ -53,7 +53,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
         try:
             comment_list = _getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllBlogComments]{config._in_cfg.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
 
         if not comment_list:
@@ -168,7 +168,7 @@ def getAllFavBlogs(return_dict: bool = False, config: Config = None) -> Union[li
         try:
             data = getFavBlogs(offset, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllFavBlogs]{config.colorRed}fail to get all favorite blogs: {e}")
+            logger.error(f"[getAllFavBlogs]{config._in_cfg.colorRed}fail to get all favorite blogs: {e}")
             return []
         blog_list = data['data'].get("blog_list", [])
         if not blog_list:
