@@ -356,24 +356,24 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     if os.path.exists(file_path):
         if policy == 'keep':
             if verbose:
-                logger.info(f"[_archiveBlog/v{version}]{config._in_cfg.colorYellow}File {file_name} already exist, skip due to 'keep' policy\033[0m")
+                logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, skip due to 'keep' policy\033[0m")
             return file_path, False
 
     if verbose:
         logger.info(f"[_archiveBlog/v{version}]Get bid ob{bid}...")
     blog_data, comments = {}, []  # 默认值。在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
     try:
-        blog_data = getBlogDetail(bid)
+        blog_data = getBlogDetail(bid, config=config)
     except BIDError as e:
-        logger.error(f"[_archiveBlog/v{version}]{config._in_cfg.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
+        logger.error(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
     else:
         time.sleep(random.uniform(*config.blogToCommentDelay))
         if verbose:
             logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
         try:
-            comments = getAllBlogComments(bid)
+            comments = getAllBlogComments(bid, config=config)
         except requests.RequestException as e:
-            logger.error(f'[_archiveBlog/v{version}]{config._in_cfg.colorRed}Network error: {e}\033[0m')
+            logger.error(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
             return file_path, True
         if verbose:
             logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
@@ -383,7 +383,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
 
     if policy == 'merge':
         if verbose:
-            logger.info(f"[_archiveBlog/v{version}]{config._in_cfg.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
+            logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
 
         ver = getVersion(os.path.join(config.savePath, config.fileName.format(bid=bid)))
         old_blog = _loadObarc(ver, bid, config)

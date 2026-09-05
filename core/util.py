@@ -107,7 +107,6 @@ class VideoEntry:
 
     @classmethod
     def fromDict(cls, d: dict):
-        """从字典更新配置。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
         return cls(**filtered)
@@ -136,6 +135,7 @@ def startEnd(func_=None, *, is_auth: bool = False):
             # 格式化参数为 {key=value} 形式
             params = bound_args.arguments
             config = params.get('config') or getGlobalConfig()
+            # print('****debug: verbose =',config.verbose)
 
             if not config.useStartEnd or is_auth:
                 try:
@@ -148,7 +148,7 @@ def startEnd(func_=None, *, is_auth: bool = False):
                 if config.verbose:
                     args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
                     cutted = args_str[:25]
-                    logger.debug(f"[{func.__name__}]start {config._in_cfg.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
+                    logger.debug(f"[{func.__name__}]start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
                 else:
                     logger.debug(f"[{func.__name__}]start")
                 try:
@@ -156,14 +156,14 @@ def startEnd(func_=None, *, is_auth: bool = False):
                     if config.verbose:
                         result_str = str(result).replace('\n', '\\n')
                         cutted = result_str[:25]
-                        logger.debug(f"[{func.__name__}]end {config._in_cfg.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m")
+                        logger.debug(f"[{func.__name__}]end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m")
                     else:
                         logger.debug(f"[{func.__name__}]end")
                     return result
                 except Exception:
                     if config.verbose:
                         exc_type, exc_value, _ = sys.exc_info()
-                        logger.debug(f"[{func.__name__}]end {config._in_cfg.colorRed}with exception {exc_type.__name__}({exc_value}{config._in_cfg.colorRed})\033[0m")
+                        logger.debug(f"[{func.__name__}]end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
                     raise
         return wrapper
 
@@ -247,7 +247,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 new_query = urlencode(query, doseq=True)
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
-                logger.info(f"[{f_name}]{method}{config._in_cfg.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
+                logger.info(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
             headers = config.headers
             headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.8.0'  # 水印，大概
             if chat_token is not None:
@@ -279,16 +279,16 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                     raise mappings.get(msg, APIError)(msg)
             except ValueError:
                 # 如果响应不是JSON
-                raise APIError(f"[{f_name}]{config._in_cfg.colorRed}{e.response.status_code} error: {e.response.text}")
+                raise APIError(f"[{f_name}]{config.colorRed}{e.response.status_code} error: {e.response.text}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
                 raise ExhaustedRetriesError(
-                    f"[{f_name}]{config._in_cfg.colorRed}Retries({retries}) exhausted "
+                    f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
                     f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
-            logger.warning(f"[{f_name}]{config._in_cfg.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
+            logger.warning(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
             time.sleep(random.uniform(*config.retryDelay))
     raise ExhaustedRetriesError(
-        f"[{f_name}]{config._in_cfg.colorRed}Retries({retries}) exhausted "
+        f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
         f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
 
 

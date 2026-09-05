@@ -3,14 +3,11 @@ import yaml
 import os
 
 
-@dataclass
 class _IConfig:
-    # 内部配置，存一些不需要暴露的字段。
+    # 内部配置，存一些不需要暴露的字段。以及它包含全局Config()。
     # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
-    colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
-    colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
-    colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
-    colorClear: str = field(default_factory=lambda: '\033[0m', repr=False, compare=False)
+    def __init__(self):
+        self.curr_cfg = Config()
 
 
 @dataclass
@@ -30,6 +27,11 @@ class Config:
     }, compare=False)
     token: str = field(default_factory=str, repr=False)
     alwaysUseToken: bool = False
+
+    colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
+    colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
+    colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
+    _colorClear: str = field(default_factory=lambda: '\033[0m', repr=False, compare=False)
 
     timeout: int = 10
     uploadTimeout: int = 120
@@ -81,19 +83,19 @@ class Config:
     retryDelay: tuple[float, float] = (0.7, 1.1)
     userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
-    _in_cfg: _IConfig = field(default_factory=_IConfig, repr=False, compare=False)
-    _richLog: bool = True
+    __richLog: bool = field(default_factory=lambda: True, repr=False)
+    __orig_colors: tuple = field(default_factory=lambda: None, repr=False, compare=False)
 
     @classmethod
     def fromDict(cls, d: dict):
-        """从字典导入配置"""
+        """从字典导入配置。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys and v is not None}
         return cls(**filtered)
 
     @classmethod
     def fromYaml(cls, fp: str):
-        """从.yml文件导入配置"""
+        """从.yml文件导入配置。"""
         with open(fp, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
@@ -106,34 +108,41 @@ class Config:
 
     def replace(self, **changes):
         """临时替换配置。其实就是dataclasses.replace()。"""
-        return replace(self, **changes)
+        rich_log = changes.pop('richLog', None)
+        new_ = replace(self, **changes)
+        if rich_log is not None:
+            new_.richLog = rich_log
+        return new_
+
+    def _copy(self):
+        return replace(self)
 
     @property
     def richLog(self) -> bool:
-        return self._richLog
+        return self.__richLog
 
     @richLog.setter
     def richLog(self, value: bool):
-        self._richLog = value
+        self.__richLog = value
         if not value:
             # 设置为False时，覆盖color*
-            self._in_cfg._orig_in_cfg = self._in_cfg
-            self._in_cfg.colorRed = ''
-            self._in_cfg.colorGray = ''
-            self._in_cfg.colorYellow = ''
-            self._in_cfg.colorClear = ''
+            self.__orig_colors = (self.colorRed, self.colorGray, self.colorYellow, self._colorClear)
+            self.colorRed = self.colorGray = self.colorYellow = self._colorClear = ''
         else:
-            self._in_cfg = self._in_cfg._orig_in_cfg
+            self.colorRed, self.colorGray, self.colorYellow, self._colorClear = self.__orig_colors
 
 
-_DEFAULT_CONFIG = Config()
+_DEFAULT_CONFIG = _IConfig()
 
 
 def setGlobalConfig(config: Config):
-    global _DEFAULT_CONFIG
-    _DEFAULT_CONFIG = config
+    _DEFAULT_CONFIG.curr_cfg = config
 
 
 def getGlobalConfig() -> Config:
+    return _DEFAULT_CONFIG.curr_cfg
+
+
+def _getIConfig() -> _IConfig:
     return _DEFAULT_CONFIG
 

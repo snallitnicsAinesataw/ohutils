@@ -69,8 +69,6 @@ def getVideoCollection(vid: int, config: Config = None) -> dict:
 @startEnd
 def _getVideoCommentList(vid: int, offset: int = 0, parent_vcid: int = 0,
                          cid_asc: bool = True, include_pinned: bool = False, config: Config = None):
-    if config is None:
-        config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/videos/{vid}?parent_vcid={parent_vcid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
     return _request('get', 'json', '_getVideoCommentList', url, config=config)['data']["comment_list"]
@@ -89,7 +87,7 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         try:
             comment_list = _getVideoCommentList(vid, parent_vcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllVideoComments]{config._in_cfg.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllVideoComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?

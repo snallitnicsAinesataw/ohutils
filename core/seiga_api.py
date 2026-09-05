@@ -113,7 +113,7 @@ def getAllSeigaComments(sid: int, parent_scid: int = 0, config: Config = None) -
         try:
             comment_list = _getSeigaCommentList(sid, parent_scid, offset, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllSeigaComments]{config._in_cfg.colorRed}fail to get all comments: {e}")
+            logger.error(f"[getAllSeigaComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?
