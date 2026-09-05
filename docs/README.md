@@ -17,8 +17,10 @@ pip install ohutils
 
 ## 示例
 动态数据获取:
+
 ```python
 import ohutils
-blog: dict = ohutils.blog_api.getBlogRaw(4824)
+
+blog: dict = ohutils.blog_api.getBlogDetail(4824)
 print(blog.get('title'))  # 'OTTOHUB审核细则'
 ```

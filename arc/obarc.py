@@ -1,9 +1,9 @@
 import random
 import requests
 from ..core.config import Config, getGlobalConfig
-from ..core.util import Comment, BlogEntry, getVersion, APIError, mergeBlogData, decrypt, genKey
+from ..core.util import Comment, BlogEntry, getVersion, APIError, _mergeBlogData, decrypt, genKey
 from typing import List, Dict, Tuple, TypeVar
-from ..core.blog_api import getAllBlogComments, getBlogRaw
+from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
 import struct
 import zlib
@@ -363,7 +363,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
         print(f"[_archiveBlog/v{version}]Get bid ob{bid}...")
     blog_data, comments = {}, []  # 默认值。在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
     try:
-        blog_data = getBlogRaw(bid)
+        blog_data = getBlogDetail(bid)
     except BIDError as e:
         if verbose:
             print(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
@@ -389,7 +389,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
 
         ver = getVersion(os.path.join(config.savePath, config.fileName.format(bid=bid)))
         old_blog = _loadObarc(ver, bid, config)
-        merged_blog = mergeBlogData(old_blog, blog_data)
+        merged_blog = _mergeBlogData(old_blog, blog_data)
         merged_comments = mergeComments(old_blog.comments, comments)
         file_name = _writeObarc(version, bid, merged_blog, merged_comments, config)
         if verbose:

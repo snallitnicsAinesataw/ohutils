@@ -136,7 +136,7 @@ def startEnd(func_=None, *, is_auth: bool = False):
             config = params.get('config') or getGlobalConfig()
             # print("[debug/se]", func.__name__, params)
 
-            if config.noStartEnd or is_auth:
+            if not config.useStartEnd or is_auth:
                 try:
                     result = func(*args, **kwargs)
                     return result
@@ -235,7 +235,7 @@ def getVersion(path: str) -> int:
 
 
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content'],
-             f_name: str, url: str, config: Config = None, data: dict = None,
+             f_name: str, url: str, *, config: Config = None, data: dict = None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None
              ) -> Union[dict, bytes]:
     if config is None:
@@ -334,7 +334,7 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
     )
 
 
-def mergeBlogData(old: BlogEntry, new: dict) -> dict:
+def _mergeBlogData(old: BlogEntry, new: dict) -> dict:
     """合并新旧数据，writeObarc的专用函数。
     我服了。别用这个。"""
     return {

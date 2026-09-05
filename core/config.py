@@ -30,7 +30,7 @@ class Config:
     uploadTimeout: int = 120
     retries: int = 3
     verbose: bool = False
-    noStartEnd: bool = True
+    useStartEnd: bool = False
 
     commentPerReq: int = 12
     subCommentPerReq: int = 6

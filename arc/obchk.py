@@ -3,27 +3,57 @@ from ..core.config import Config, getGlobalConfig
 import zlib
 import struct
 from .obarc import _parseBlog
-from typing import Union
+from typing import Union, Optional
 import os
 import time
 
 
 class BlogChunk:
-    def __init__(self, **kwargs):
+    def __init__(self, fp: str, flags: int, start: int, end: int, bias: int, config: Config):
         """无需实例化，应使用loadChunk()创建。"""
-        self._fp = kwargs['filepath']
+        self._fp = fp
         self._cache = {}  # {bid:int -> BlogEntry}
-        self._index = self._load_index()   # {bid:int -> offset:int}
+        self._start = start
+        self._end = end
+        self._cfg = config
+        self._bias = bias
+        self._flags = flags
+        self._encrypt = flags & 1
+        if self._encrypt:
+            self.__key, _ = genKey(config.password, config.salt)
+        self._index = self._load_index()   # {bid:int -> (offset:int, data_len:int)}
 
     def _load_index(self):
-        with open(self._fp, 'rb', encoding='utf-8') as f:
-            ...
+        idx = {}
+        with open(self._fp, 'rb') as f:
+            for bid in range(self._start, self._end + 1):
+                f.seek(self._bias + (bid - self._start) * 8)
+                try:
+                    offset = struct.unpack('<Q', f.read(8))[0]
+                except Exception as e:
+                    if config.verbose:
+                        print(f"[BlogChunk/load]failed to read offset for bid={bid}: {e}\033[0m")
+                    continue
+                if offset == 0:
+                    continue
+                next_offset = struct.unpack('<Q', f.read(8))[0]
+                data_len = next_offset - offset
+                idx[bid] = (offset, data_len)
+        return idx
 
-    def __getitem__(self, bid: int):
-        ...
+    def __getitem__(self, bid: int) -> BlogEntry:
+        offset, data_len = self._index[bid]
+        if bid not in self._cache:
+            with open(self._fp, 'rb') as f:
+                f.seek(offset)
+                data = f.read(data_len)
+            if self._encrypt:
+                data = decrypt(self.__key, data)
+            self._cache[bid] = deserializeBlog(data)
+        return self._cache[bid]
 
     def __len__(self):
-        len(self._index)
+        return len(self._index)
 
     def __iter__(self):
         return iter(self._index.keys())
@@ -44,6 +74,20 @@ class BlogChunk:
             return self.__getitem__(bid)
         except KeyError:
             return default
+
+    def materialize(self) -> dict[int, BlogEntry]:
+        """立即返回所有动态。
+        当文件较大、文件已加密时，可能需要一段时间。"""
+        res = {}
+        for bid in self._index:
+            res[bid] = self.__getitem__(bid)
+        return res
+
+    def __repr__(self):
+        return f"BlogChunk({len(self._index)} entries, {len(self._cache)} cached)"
+
+    def __str__(self):
+        return f"BlogChunk({len(self._index)} entries, {len(self._cache)} cached)"
 
 
 def serializeBlog(bid: int, config: Config = None) -> bytes:
@@ -173,42 +217,14 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
     print(f"[buildChunk]Chunk built: {filename}")
 
 
-def loadChunk(filename: str, lazy: bool = False, config: Config = None) -> dict[int, BlogEntry]:
-    """读取.obchk文件。
-    若lazy=False，返回{bid: BlogEntry}。否则返回BlogChunk类，此类表现与dict一致。"""
+def loadChunk(filepath: str, config: Config = None) -> BlogChunk:
+    """读取.obchk文件。返回BlogChunk实例(类dict)。"""
     if config is None:
         config = getGlobalConfig()
-    with open(filename, "rb") as f:
+    with open(filepath, "rb") as f:
         header = f.read(32)
         flags = struct.unpack('<B', header[6:7])[0]
         start_bid = struct.unpack('<I', header[23:27])[0]
         end_bid = struct.unpack('<I', header[27:31])[0]
         lookup_bias = struct.unpack('<I', header[7:11])[0]
-
-        if flags & 1:
-            key, _ = genKey(config.password, config.salt)
-
-        f.seek(lookup_bias)
-        result = {}
-        if lazy:
-            ...
-        else:
-            for bid in range(start_bid, end_bid + 1):
-                f.seek(lookup_bias + (bid - start_bid) * 8)
-                try:
-                    offset = struct.unpack('<Q', f.read(8))[0]
-                except Exception as e:
-                    if config.verbose:
-                        print(f"[loadChunk]failed to read offset for bid={bid}: {e}\033[0m")
-                    continue
-                if offset == 0:
-                    continue
-                next_offset = struct.unpack('<Q', f.read(8))[0]
-                data_len = next_offset - offset
-                f.seek(offset)
-                data = f.read(data_len)
-                if flags & 1:
-                    data = decrypt(key, data)
-                blog = deserializeBlog(data)
-                result[bid] = blog
-    return result
+    return BlogChunk(filepath, flags, start_bid, end_bid, lookup_bias, config)

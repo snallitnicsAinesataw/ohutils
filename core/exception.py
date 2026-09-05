@@ -29,7 +29,7 @@ class PasswordMismatchError(APIError):
 
 
 class EmailExistError(APIError):
-    """邮箱已存在"""
+    """邮箱已注册"""
     pass
 
 

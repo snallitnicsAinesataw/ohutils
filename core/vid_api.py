@@ -10,7 +10,7 @@ def getVideoDetailRaw(vid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/video/{vid}"
-    return _request('get', 'json', 'getVideoDetailRaw', url, config).get('data', {})
+    return _request('get', 'json', 'getVideoDetailRaw', url, config=config).get('data', {})
 
 
 @startEnd
@@ -19,7 +19,7 @@ def getAllDanmakuRaw(vid: int, config: Config = None) -> list:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/danmaku/{vid}"
-    return _request('get', 'json', 'getVideoDetailRaw', url, config).get('data', [])
+    return _request('get', 'json', 'getVideoDetailRaw', url, config=config).get('data', [])
 
 
 def getAllDanmaku(vid: int) -> list[Danmaku]:
@@ -38,7 +38,7 @@ def getPopularVideosRaw(time_limit_day: int = 7, offset: int = 0, config: Config
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/video/popular?time_limit={time_limit_day}&offset={offset}&num={config.videoPerReq}"
-    return _request('get', 'json', "getPopularVideosRaw", url, config)
+    return _request('get', 'json', "getPopularVideosRaw", url, config=config)
 
 
 @startEnd
@@ -47,7 +47,7 @@ def getRandomVideosRaw(config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/video/random?num={config.videoPerReq}"
-    return _request('get', 'json', "getRandomVideosRaw", url, config)
+    return _request('get', 'json', "getRandomVideosRaw", url, config=config)
 
 
 @startEnd
@@ -57,7 +57,7 @@ def getLatestVideosRaw(type_: Literal[0, 1, 3, 4, 5, 6, 7], offset: int = 0, con
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/video/new?offset={offset}&type={type_}&num={config.videoPerReq}"
-    return _request('get', 'json', "getLatestVideosRaw", url, config)
+    return _request('get', 'json', "getLatestVideosRaw", url, config=config)
 
 
 @startEnd
@@ -66,7 +66,7 @@ def getVideoCollectionRaw(vid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/videos/{vid}/collection"
-    return _request('get', 'json', "getVideoCollectionsRaw", url, config)
+    return _request('get', 'json', "getVideoCollectionsRaw", url, config=config)
 
 
 @startEnd
@@ -77,7 +77,7 @@ def getVideoCommentListRaw(vid: int, offset: int = 0, parent_vcid: int = 0,
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/videos/{vid}?parent_vcid={parent_vcid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
-    return _request('get', 'json', 'getVideoCommentListRaw', url, config)
+    return _request('get', 'json', 'getVideoCommentListRaw', url, config=config)
 
 
 @startEnd

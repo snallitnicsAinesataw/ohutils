@@ -9,7 +9,7 @@ def getLegalDocsRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/system/legal-documents/"
-    return _request('get', 'json', 'getLegalDocsRaw', url, config)
+    return _request('get', 'json', 'getLegalDocsRaw', url, config=config)
 
 
 @startEnd
@@ -18,7 +18,7 @@ def getTermsOfService(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = getLegalDocsRaw(config)['data']['documents']['terms_of_service_url']
-    return _request('get', 'content', 'getTermsOfService', url, config).decode('utf-8')
+    return _request('get', 'content', 'getTermsOfService', url, config=config).decode('utf-8')
 
 
 @startEnd
@@ -27,7 +27,7 @@ def getPrivacyPolicy(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = getLegalDocsRaw(config)['data']['documents']['privacy_policy_url']
-    return _request('get', 'content', 'getPrivacyPolicy', url, config).decode('utf-8')
+    return _request('get', 'content', 'getPrivacyPolicy', url, config=config).decode('utf-8')
 
 
 @startEnd
@@ -36,7 +36,7 @@ def getReviewSpec(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = getLegalDocsRaw(config)['data']['documents']['platform_content_review_specification_url']
-    return _request('get', 'content', 'getReviewSpec', url, config).decode('utf-8')
+    return _request('get', 'content', 'getReviewSpec', url, config=config).decode('utf-8')
 
 
 @startEnd
@@ -44,4 +44,4 @@ def getSlideshowRaw(config: Config = None) -> dict:
     """获取首页轮播图。"""
     if config is None:
         config = getGlobalConfig()
-    return _request('get', 'json', 'getSlideshowRaw', f'https://{config.APIBase}api/slideshow/active/', config)
+    return _request('get', 'json', 'getSlideshowRaw', f'https://{config.APIBase}api/slideshow/active/', config=config)

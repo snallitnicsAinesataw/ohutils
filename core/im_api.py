@@ -8,7 +8,7 @@ def getUnreadMsgNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/im/unread-count?token={config.token}"
-    return _request('get', 'json', 'getUnreadMsgNumRaw', url, config)
+    return _request('get', 'json', 'getUnreadMsgNumRaw', url, config=config)
 
 
 @startEnd
@@ -17,7 +17,7 @@ def getUnreadModerationNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/moderation/logs/unread-count?token={config.token}"
-    return _request('get', 'json', 'getUnreadModerationNumRaw', url, config)
+    return _request('get', 'json', 'getUnreadModerationNumRaw', url, config=config)
 
 
 @startEnd
@@ -26,7 +26,7 @@ def getCommentRepliesNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/im/comment-replies/unread-count?token={config.token}"
-    return _request('get', 'json', 'getCommentRepliesNumRaw', url, config)
+    return _request('get', 'json', 'getCommentRepliesNumRaw', url, config=config)
 
 
 @startEnd
@@ -35,7 +35,7 @@ def getMentionsNumRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/im/mentions/unread-count?token={config.token}"
-    return _request('get', 'json', 'getMentionsNumRaw', url, config)
+    return _request('get', 'json', 'getMentionsNumRaw', url, config=config)
 
 
 @startEnd
@@ -62,7 +62,7 @@ def getIMRaw(receiver: int, offset: int = 0, config: Config = None) -> dict:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/im/conversations/{receiver}/messages?offset={offset}"\
           f"&num={config.msgPerReq}&if_time_desc={int(not config.ascending)}&token={config.token}"
-    return _request('get', 'json', 'getIMRaw', url, config)
+    return _request('get', 'json', 'getIMRaw', url, config=config)
 
 
 @startEnd
@@ -71,7 +71,7 @@ def getModerationRaw(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/moderation/logs?offset={offset}&num={config.modLogPerReq}&token={config.token}"
-    return _request('get', 'json', 'getModerationRaw', url, config)
+    return _request('get', 'json', 'getModerationRaw', url, config=config)
 
 
 @startEnd
@@ -80,7 +80,7 @@ def sendIM(receiver: int, msg: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     data = {'token': config.token, 'receiver': receiver, 'message': msg}
-    return _request('post', 'json', "sendIM", f"https://{config.APIBase}api/im/messages", config, data)
+    return _request('post', 'json', "sendIM", f"https://{config.APIBase}api/im/messages", config=config, data=data)
 
 
 @startEnd

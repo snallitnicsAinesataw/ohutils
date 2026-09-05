@@ -8,12 +8,14 @@ import random
 
 
 @startEnd
-def getBlogRaw(bid: int, config: Config = None) -> dict:
+def getBlogDetail(bid: int, config: Config = None) -> dict:
     """获取指定bid的动态数据。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/{bid}/detail/"
-    return _request('get', 'json', 'getBlogRaw', url, config)
+    res = _request('get', 'json', 'getBlogDetail', url, config=config)
+    del res['status']
+    return res
 
 
 @startEnd
@@ -22,7 +24,7 @@ def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/latest?offset={offset}&num={config.latestBlogPerReq}&is_gore={int(config.gore)}"
-    return _request('get', 'json', 'getLatestBlogRaw', url, config)
+    return _request('get', 'json', 'getLatestBlogRaw', url, config=config)
 
 
 @startEnd
@@ -33,7 +35,7 @@ def getBlogCommentListRaw(bid, parent_bcid: int = 0, offset: int = 0,
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
-    return _request('get', 'json', 'getBlogCommentListRaw', url, config)
+    return _request('get', 'json', 'getBlogCommentListRaw', url, config=config)
 
 
 @startEnd
@@ -92,7 +94,7 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/blogs/{bid}"
     data = {"token": config.token, "parent_bcid": str(parent_bcid), "content": content}
-    return _request('post', 'json', "sendComment", url, config, data)
+    return _request('post', 'json', "sendComment", url, config=config, data=data)
 
 
 @startEnd
@@ -101,7 +103,7 @@ def getRandomBlogRaw(config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/random?num={config.randomBlogPerReq}"
-    return _request('get', 'json', 'getRandomBlogRaw', url, config)
+    return _request('get', 'json', 'getRandomBlogRaw', url, config=config)
 
 
 @startEnd
@@ -112,7 +114,7 @@ def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
           f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
-    return _request('get', 'json', 'searchBlogsRaw', url, config)
+    return _request('get', 'json', 'searchBlogsRaw', url, config=config)
 
 
 @startEnd
@@ -121,7 +123,7 @@ def toggleBlogLike(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/like/{bid}"
-    return _request('post', 'json', 'toggleBlogLike', url, config, {'token': config.token})
+    return _request('post', 'json', 'toggleBlogLike', url, config=config, data={'token': config.token})
 
 
 @startEnd
@@ -130,7 +132,7 @@ def toggleBlogFavorite(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite/{bid}"
-    return _request('post', 'json', 'toggleBlogFavorite', url, config, {'token': config.token})
+    return _request('post', 'json', 'toggleBlogFavorite', url, config=config, data={'token': config.token})
 
 
 @startEnd
@@ -141,7 +143,7 @@ def getManageBlogsRaw(offset: int = 0, config: Config = None) -> dict:
     url = (
         f"https://{config.APIBase}api/blog/manage-list?num={config.managePerReq}&offset={offset}&_t={int(time.time())}"
         f"&token={config.token}")
-    return _request('get', 'json', "getManageBlogsRaw", url, config)
+    return _request('get', 'json', "getManageBlogsRaw", url, config=config)
 
 
 @startEnd
@@ -151,7 +153,7 @@ def getFavBlogsRaw(offset: int = 0, config: Config = None) -> dict:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
           f"&_t={int(time.time())}&token={config.token}"
-    return _request('get', 'json', "getFavBlogsRaw", url, config)
+    return _request('get', 'json', "getFavBlogsRaw", url, config=config)
 
 
 @startEnd
@@ -193,7 +195,7 @@ def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Con
         data['is_gore'] = int(is_gore)
     if tags is not None:
         data['tag'] = tags
-    return _request('put', 'json', 'editBlog', url, config, data)
+    return _request('put', 'json', 'editBlog', url, config=config, data=data)
 
 
 @startEnd
@@ -202,4 +204,13 @@ def getBlogCollectionRaw(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/{bid}/collection/"
-    return _request('get', 'json', 'getBlogCollectionRaw', url, config)
+    return _request('get', 'json', 'getBlogCollectionRaw', url, config=config)
+
+
+@startEnd
+def reportBlog(bid: int, reason: str, config: Config = None):
+    """举报指定bid。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/moderation/blogs/{bid}/report/"
+    return _request('post', 'json', 'reportBlog', url, config=config, data={"token": config.token, "reason": reason})

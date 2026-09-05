@@ -176,7 +176,7 @@ def getChatToken(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/exchange/"
-    d = _request('post', 'json', 'getChatToken', url, config, {'main_token': config.token}, is_chat=True)
+    d = _request('post', 'json', 'getChatToken', url, config=config, data={'main_token': config.token}, is_chat=True)
     return d['data']['chat_token']
 
 
@@ -186,7 +186,7 @@ def meRaw(chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/me/"
-    return _request('get', 'json', 'meRaw', url, config, is_chat=True, chat_token=chat_token)
+    return _request('get', 'json', 'meRaw', url, config=config, is_chat=True, chat_token=chat_token)
 
 
 @startEnd
@@ -199,7 +199,7 @@ def getChatsRaw(config: Config = None) -> dict:
     chat_token = None
     if config.alwaysUseToken:
         chat_token = getChatToken(config)
-    return _request('get', 'json', 'getChatsRaw', url, config, is_chat=True,
+    return _request('get', 'json', 'getChatsRaw', url, config=config, is_chat=True,
                     chat_token=chat_token if config.alwaysUseToken else None)
 
 
@@ -239,7 +239,7 @@ def deleteMessage(msg_id: int, chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}/api/messages/{msg_id}"
-    return _request('delete', 'json', 'deleteMessage', url, config, is_chat=True, chat_token=chat_token)
+    return _request('delete', 'json', 'deleteMessage', url, config=config, is_chat=True, chat_token=chat_token)
 
 
 @startEnd
@@ -248,7 +248,7 @@ def blockUser(uid: int, chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/blocks/"
-    return _request('post', 'json', 'blockUser', url, config, is_chat=True, chat_token=chat_token, data={'uid': uid})
+    return _request('post', 'json', 'blockUser', url, config=config, is_chat=True, chat_token=chat_token, data={'uid': uid})
 
 
 @startEnd
@@ -257,7 +257,7 @@ def unblockUser(uid: int, chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/blocks/{uid}"
-    return _request('delete', 'json', 'unblockUser', url, config, is_chat=True, chat_token=chat_token)
+    return _request('delete', 'json', 'unblockUser', url, config=config, is_chat=True, chat_token=chat_token)
 
 
 @startEnd
@@ -266,5 +266,5 @@ def getBlockUsers(chat_token: str, config: Config = None) -> list:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/blocks/"
-    data = _request('get', 'json', 'getBlockUsers', url, config, is_chat=True, chat_token=chat_token)
+    data = _request('get', 'json', 'getBlockUsers', url, config=config, is_chat=True, chat_token=chat_token)
     return data['data']['block_list']

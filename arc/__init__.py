@@ -1,7 +1,7 @@
 from .obarc import (
     archiveBlog,
-    getGlobalConfig, getBlogRaw, getAllBlogComments, getVersion,
-    loadObarc,loadObarcBytes,
+    getGlobalConfig, getBlogDetail, getAllBlogComments, getVersion,
+    loadObarc, loadObarcBytes,
     mergeComments,
     writeObarc,
 )

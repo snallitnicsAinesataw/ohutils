@@ -88,7 +88,7 @@ def isAudit(config: Config = None) -> bool:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/profile/is-audit?token={config.token}"
-    return bool(_request('get', 'json', 'isAudit', url, config)['data']['is_audit'])
+    return bool(_request('get', 'json', 'isAudit', url, config=config)['data']['is_audit'])
 
 
 @startEnd
@@ -98,7 +98,7 @@ def getFollowersRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/fans/{uid}?offset={offset}&num={config.userPerReq}"
-    return _request('get', 'json', 'getFollowersRaw', url, config)
+    return _request('get', 'json', 'getFollowersRaw', url, config=config)
 
 
 @startEnd
@@ -122,7 +122,7 @@ def getFollowingsRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/list/{uid}?offset={offset}&num={config.userPerReq}"
-    return _request('get', 'json', 'getFollowersRaw', url, config)
+    return _request('get', 'json', 'getFollowersRaw', url, config=config)
 
 
 @startEnd
