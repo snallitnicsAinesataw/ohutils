@@ -240,8 +240,8 @@ def writeData(sql_type: int, conn: sqlite3.Connection, no_update: bool = False, 
 def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwargs) -> list:
     """从指定数据库读取选择的字段(fields)，带条件。
     条件的比较运算符: 若无后缀，为等于(=)。
-    若有__gt / __lt / __ge / __le / __ne 后缀，
-    则分别为大于(>)，小于(<)，大于等于(>=)，小于等于(<=)，不等于(!=)。
+    若有__gt / __lt / __ge / __le / __ne / __like后缀，
+    则分别为大于(>)，小于(<)，大于等于(>=)，小于等于(<=)，不等于(!=)，LIKE。
 
     e.g.:
     view__le=132 -> view <= 132
@@ -252,14 +252,13 @@ def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwa
     fields_str = ", ".join(fields) if fields else "*"
     kv = []
     for k in kwargs.keys():
-        # 这是一个神秘的hack。也说不上hack，就是怪。
-        k = k[::-1]
-        k_list = k.split('__', maxsplit=1)
+        # 哦还有rsplit这种东西的啊。
+        k_list = k.rsplit('__', maxsplit=1)
         if len(k_list) == 1:
-            kv.append(k[::-1] + '=?')  # 无后缀
+            kv.append(k + '=?')  # 无后缀
         else:
-            kv.append(k_list[1][::-1] + {'tl': '<', 'tg': '>', 'el': '<=', 'eg': '>=', 'en': '!=', '': '__='}[k_list[0]] + '?')
-    cond = 'WHERE ' if kwargs.keys() else '' + " AND ".join(...)
+            kv.append(k_list[0] + {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!=', 'like': ' LIKE '}[k_list[1]] + '?')
+    cond = ('WHERE ' if kwargs.keys() else '') + " AND ".join(kv)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"
     cur.execute(query, tuple(kwargs.values()))
     return cur.fetchall()
