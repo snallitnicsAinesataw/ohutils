@@ -7,39 +7,39 @@ import time
 
 
 @startEnd
-def getUserDetailRaw(uid: int, config: Config = None) -> dict:
+def getUserDetail(uid: int, config: Config = None) -> dict:
     """获取指定uid的数据。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/user/{uid}"
-    return _request('get', 'json', 'getUserDetailRaw', url, config)
+    return _request('get', 'json', 'getUserDetail', url, config=config)['data']
 
 
 @startEnd
-def getUserVideoCollectionsRaw(uid: int, config: Config = None) -> dict:
+def getUserVideoCollections(uid: int, config: Config = None) -> list[str]:
     """获取指定uid的视频合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/videos/collections?uid={uid}"
-    return _request('get', 'json', 'getUserVideoCollectionsRaw', url, config)
+    return _request('get', 'json', 'getUserVideoCollections', url, config=config)['collection_list']
 
 
 @startEnd
-def getUserBlogCollectionsRaw(uid: int, config: Config = None) -> dict:
+def getUserBlogCollections(uid: int, config: Config = None) -> list[str]:
     """获取指定uid的动态合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/collections?uid={uid}"
-    return _request('get', 'json', 'getUserBlogCollectionsRaw', url, config)
+    return _request('get', 'json', 'getUserBlogCollections', url, config=config)['collection_list']
 
 
 @startEnd
-def getUserBlogsRaw(uid: int, offset: int = 0, config: Config = None) -> list:
+def getUserBlogList(uid: int, offset: int = 0, config: Config = None) -> list:
     """获取指定uid的一组动态列表(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/users/{uid}/blogs?offset={offset}&num={config.userBlogPerReq}"
-    return _request('get', 'json', 'getUserBlogsRaw', url, config).get("blog_list", [])
+    return _request('get', 'json', 'getUserBlogList', url, config=config).get("blog_list", [])
 
 
 @startEnd
@@ -48,7 +48,7 @@ def getAllUserBlog(uid: int, config: Config = None) -> list[dict]:
     if config is None:
         config = getGlobalConfig()
     all_blogs = _recur_request('getAllUserBlog',
-                               lambda off: getUserBlogsRaw(uid, off, config),
+                               lambda off: getUserBlogList(uid, off, config),
                                config.userBlogPerReq, config.blogBatchDelay, config)
     if config.verbose:
         print(f"[getAllUserBlog]get {len(all_blogs)} blog(s) of ou{uid}")
@@ -58,7 +58,7 @@ def getAllUserBlog(uid: int, config: Config = None) -> list[dict]:
 def isUserAlive(uid: int, config: Config = None) -> bool:
     """测试用户状态是否正常。"""
     try:
-        getUserDetailRaw(uid, config)
+        getUserDetail(uid, config)
         return True
     except UIDError:
         return False
@@ -92,13 +92,13 @@ def isAudit(config: Config = None) -> bool:
 
 
 @startEnd
-def getFollowersRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
+def getFollowersList(uid: int, offset: int = 0, config: Config = None) -> list[dict]:
     """获取指定uid的一组粉丝(不递归)。
     使用alwaysUseToken可以获取token对应用户与粉丝之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/fans/{uid}?offset={offset}&num={config.userPerReq}"
-    return _request('get', 'json', 'getFollowersRaw', url, config=config)
+    return _request('get', 'json', 'getFollowersList', url, config=config)['data']['user_list']
 
 
 @startEnd
@@ -108,7 +108,7 @@ def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
     if config is None:
         config = getGlobalConfig()
     all_ = _recur_request('getAllFollowers',
-                          lambda off: getFollowersRaw(uid, off, config)['data']['user_list'],
+                          lambda off: getFollowersList(uid, off, config),
                           config.userPerReq, config.userBatchDelay, config)
     if config.verbose:
         print(f"[getAllFollowers]get {len(all_)} follower(s) of ou{uid}")
@@ -116,13 +116,13 @@ def getAllFollowers(uid: int, config: Config = None) -> list[dict]:
 
 
 @startEnd
-def getFollowingsRaw(uid: int, offset: int = 0, config: Config = None) -> dict:
+def getFollowingsList(uid: int, offset: int = 0, config: Config = None) -> list[dict]:
     """获取指定uid的一组关注用户(不递归)。
     使用alwaysUseToken可以获取token对应用户与关注用户之间的关系(follow_status)，否则均为ohutils.STAT_UNKNOWN (-1)."""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/following/list/{uid}?offset={offset}&num={config.userPerReq}"
-    return _request('get', 'json', 'getFollowersRaw', url, config=config)
+    return _request('get', 'json', 'getFollowersList', url, config=config)['data']['user_list']
 
 
 @startEnd
@@ -132,7 +132,7 @@ def getAllFollowings(uid: int, config: Config = None) -> list[dict]:
     if config is None:
         config = getGlobalConfig()
     all_ = _recur_request('getAllFollowings',
-                          lambda off: getFollowersRaw(uid, off, config)['data']['user_list'],
+                          lambda off: getFollowingsList(uid, off, config),
                           config.userPerReq, config.userBatchDelay, config)
     if config.verbose:
         print(f"[getAllFollowings]get {len(all_)} following(s) of ou{uid}")

@@ -29,14 +29,14 @@ def getLatestBlog(offset: int = 0, config: Config = None) -> list[dict]:
 
 
 @startEnd
-def getBlogCommentList(bid, parent_bcid: int = 0, offset: int = 0,
-                       cid_asc: bool = True, include_pinned: bool = True, config: Config = None) -> dict:
+def _getBlogCommentList(bid, parent_bcid: int = 0, offset: int = 0,
+                        cid_asc: bool = True, include_pinned: bool = True, config: Config = None) -> dict:
     """拉取指定bid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
-    return _request('get', 'json', 'getBlogCommentList', url, config=config)['data']['comment_list']
+    return _request('get', 'json', '_getBlogCommentList', url, config=config)['data']['comment_list']
 
 
 @startEnd
@@ -51,7 +51,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
             print(f"[getAllBlogComments]curr offset: {offset}")
 
         try:
-            comment_list = getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
+            comment_list = _getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
             if config.verbose:
                 print(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")

@@ -305,7 +305,7 @@ class APINotFoundError(APIError):
 
 class GoreNotAllowedError(APIError):
     """不允许请求is_gore=1内容"""
-    pass  # 不理解为什么不让。
+    pass  # ｢仅对允许观看此类内容的用户可见｣又是什么话。那谁能看？
 
 
 mappings = {

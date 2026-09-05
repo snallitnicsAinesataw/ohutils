@@ -48,7 +48,7 @@ class Danmaku:
     render: str
 
     @classmethod
-    def fromDict(cls, d: dict):
+    def _from_dict(cls, d: dict):
         """从字典导入。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
