@@ -1,5 +1,5 @@
 from . import arc
-from .arc import sql_io
+from .arc import sql_io as sql
 from .core import *
 from .core.util import (
     Comment, BlogEntry, Danmaku, VideoEntry,
@@ -13,7 +13,7 @@ from .core.util import (
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 F_ENCRYPT_CONTENT = 1
 F_GORE = 2
 F_HAS_FORWARD = 4

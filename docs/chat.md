@@ -23,14 +23,14 @@
  - **返回**: 字典`data{uid: int, username: str, is_admin: int, mute}`。
  - **注**: `mute`字段当前未知具体含义。
 
-## 2.1.3 getChatsRaw()
-`getChatsRaw(config: Config = None) -> dict`
+## 2.1.3 getChats()
+`getChats(config: Config = None) -> dict`
 
-获取聊天室消息原始数据。在`config.alwaysUseToken=True`时，会发送请求以获得`chat_token`。
+获取聊天室消息和公告。在`config.alwaysUseToken=True`时，会发送请求以获得`chat_token`。
 
  - **参数**: *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
  - **返回**: 字典。
-   - `data{room: str, pinned_announcement: dict, message_list: list[dict]}`
+   - `{room: str, pinned_announcement: dict, message_list: list[dict]}`
    - **pinned_announcement**: `{room: str, content: str, pinned: bool, updated_by: int, updated_at: time_str}`。
    - **message_list**: `[{id: int, room: str, uid: int, username: str, content: str, created_at: time_str, reply: dict?},...]`
    - **reply**: `{id: int, uid: int, username: str, content: str, deleted: bool}`。若为`None`则表示不回复消息。
@@ -65,7 +65,7 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
    - 当`threaded`为`True`时：返回`(ChatClient实例, threading.Thread)`。
    - 当`threaded`为`False`时：返回`ChatClient`实例。**此时需要手动调用`client.run_forever()`以运行客户端**。
  - **注意**：
-   - 即使传递了`on_chat`/`on_message`/`on_online_change`参数, `on_message`仍会被调用。
+   - 即使传递了`on_chat`/`on_message`/`on_online_change`参数, `on_message`**仍会被调用**。
  
 ### 2.1.4.2 on_message格式
 | `type`            | 其它键值                                                                                                                           |
@@ -91,10 +91,11 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 |                   | `room` -> 房间名称。                                                                                                                |
 
 ## 2.1.5 ChatClient类
-> **通常不需直接实例化**，而是使用`connectChat()`创建。
+> **通常不需要直接实例化**，而是使用`connectChat()`创建。
 
 聊天室客户端。`websocket.WebSocketApp`的包装。
 **参数**见 2.1.4。
+
 ### 2.1.5.2 client.sendMessage()
 `client.sendMessage(self, content: str, reply_id: int = None) -> None`
 

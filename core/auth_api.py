@@ -5,29 +5,32 @@ from getpass import getpass
 
 
 @startEnd(is_auth=True)
-def loginRaw(uid_email: str, password: str, config: Config = None) -> dict:
+def login(uid_email: str, password: str, config: Config = None) -> dict:
     """登录。
     useStartEnd此时无效(固定为False)，以防止日志泄露账号密码。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/login/"
-    return _request('post', 'json', 'loginRaw', url, config=config, data={'uid_email': uid_email, "pw": password})
+    res = _request('post', 'json', 'login', url, config=config, data={'uid_email': uid_email, "pw": password})
+    del res['status']
+    return res
 
 
 def loginAndSetToken(uid_email: str, password: str, config: Config = None):
     """登录并更新全局配置的token。"""
     if config is None:
         config = getGlobalConfig()
-    config.token = loginRaw(uid_email, password, config)['token']
+    config.token = login(uid_email, password, config)['token']
 
 
 @startEnd
-def checkinRaw(config: Config = None) -> dict:
-    """签到。需要token。"""
+def checkin(config: Config = None) -> bool:
+    """签到。需要token。返回if_today_first_login。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/sign-in/"
-    return _request('post', 'json', 'signinRaw', url, config=config, data={"token": config.token})
+    res = _request('post', 'json', 'checkin', url, config=config, data={"token": config.token})['if_today_first_login']
+    return {'yes': True, 'no': False}[res]
 
 
 @startEnd(is_auth=True)

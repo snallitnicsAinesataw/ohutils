@@ -181,17 +181,17 @@ def getChatToken(config: Config = None) -> str:
 
 
 @startEnd
-def meRaw(chat_token: str, config: Config = None):
+def meRaw(chat_token: str, config: Config = None) -> dict:
     """获取chat_token对应用户的信息。需要chat_token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/me/"
-    return _request('get', 'json', 'meRaw', url, config=config, is_chat=True, chat_token=chat_token)
+    return _request('get', 'json', 'meRaw', url, config=config, is_chat=True, chat_token=chat_token)['data']
 
 
 @startEnd
-def getChatsRaw(config: Config = None) -> dict:
-    """获取聊天室消息。
+def getChats(config: Config = None) -> dict:
+    """获取聊天室消息和公告。
     在config.alwaysUseToken=True时，会发送请求以获得chat_token。"""
     if config is None:
         config = getGlobalConfig()
@@ -199,8 +199,8 @@ def getChatsRaw(config: Config = None) -> dict:
     chat_token = None
     if config.alwaysUseToken:
         chat_token = getChatToken(config)
-    return _request('get', 'json', 'getChatsRaw', url, config=config, is_chat=True,
-                    chat_token=chat_token if config.alwaysUseToken else None)
+    return _request('get', 'json', 'getChats', url, config=config, is_chat=True,
+                    chat_token=chat_token if config.alwaysUseToken else None)['data']
 
 
 def connectChat(room: str = 'main', config: Config = None, threaded: bool = True, beat_interval: int = 30,

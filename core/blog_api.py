@@ -19,23 +19,24 @@ def getBlogDetail(bid: int, config: Config = None) -> dict:
 
 
 @startEnd
-def getLatestBlogRaw(offset: int = 0, config: Config = None) -> dict:
+def getLatestBlog(offset: int = 0, config: Config = None) -> list[dict]:
     """获取最近的动态。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/blog/latest?offset={offset}&num={config.latestBlogPerReq}&is_gore={int(config.gore)}"
-    return _request('get', 'json', 'getLatestBlogRaw', url, config=config)
+    url = f"https://{config.APIBase}api/blog/latest?offset={offset}&num={config.latestBlogPerReq}" +\
+          ('' if config.gore else f"&is_gore=0")
+    return _request('get', 'json', 'getLatestBlog', url, config=config)['blog_list']
 
 
 @startEnd
-def getBlogCommentListRaw(bid, parent_bcid: int = 0, offset: int = 0,
-                          cid_asc: bool = True, include_pinned: bool = True, config: Config = None) -> dict:
+def getBlogCommentList(bid, parent_bcid: int = 0, offset: int = 0,
+                       cid_asc: bool = True, include_pinned: bool = True, config: Config = None) -> dict:
     """拉取指定bid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}"\
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
-    return _request('get', 'json', 'getBlogCommentListRaw', url, config=config)
+    return _request('get', 'json', 'getBlogCommentList', url, config=config)['data']['comment_list']
 
 
 @startEnd
@@ -50,13 +51,12 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
             print(f"[getAllBlogComments]curr offset: {offset}")
 
         try:
-            data = getBlogCommentListRaw(bid, parent_bcid, offset, config.ascending, include_pinned, config)
+            comment_list = getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
             if config.verbose:
                 print(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
             return []  # 过于激进?
 
-        comment_list = data['data'].get("comment_list", [])
         if not comment_list:
             return []  # 过于激进?
 
@@ -98,23 +98,23 @@ def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = N
 
 
 @startEnd
-def getRandomBlogRaw(config: Config = None) -> dict:
+def getRandomBlogs(config: Config = None) -> list[dict]:
     """获取一组随机动态。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/random?num={config.randomBlogPerReq}"
-    return _request('get', 'json', 'getRandomBlogRaw', url, config=config)
+    return _request('get', 'json', 'getRandomBlogs', url, config=config)['blog_list']
 
 
 @startEnd
-def searchBlogsRaw(term: str, offset: int = 0, bid_desc: bool = True, view_desc: bool = False,
-                   config: Config = None) -> dict:
+def searchBlogs(term: str, offset: int = 0, bid_desc: bool = True, view_desc: bool = False,
+                config: Config = None) -> dict:
     """搜索动态。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
           f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
-    return _request('get', 'json', 'searchBlogsRaw', url, config=config)
+    return _request('get', 'json', 'searchBlogs', url, config=config)['data']
 
 
 @startEnd
@@ -123,7 +123,7 @@ def toggleBlogLike(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/like/{bid}"
-    return _request('post', 'json', 'toggleBlogLike', url, config=config, data={'token': config.token})
+    return _request('post', 'json', 'toggleBlogLike', url, config=config, data={'token': config.token})['data']
 
 
 @startEnd
@@ -132,28 +132,28 @@ def toggleBlogFavorite(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite/{bid}"
-    return _request('post', 'json', 'toggleBlogFavorite', url, config=config, data={'token': config.token})
+    return _request('post', 'json', 'toggleBlogFavorite', url, config=config, data={'token': config.token})['data']
 
 
 @startEnd
-def getManageBlogsRaw(offset: int = 0, config: Config = None) -> dict:
+def getManageBlogs(offset: int = 0, config: Config = None) -> dict:
     """获取｢动态管理｣内的一组动态(不递归)。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = (
         f"https://{config.APIBase}api/blog/manage-list?num={config.managePerReq}&offset={offset}&_t={int(time.time())}"
         f"&token={config.token}")
-    return _request('get', 'json', "getManageBlogsRaw", url, config=config)
+    return _request('get', 'json', "getManageBlogs", url, config=config)['data']
 
 
 @startEnd
-def getFavBlogsRaw(offset: int = 0, config: Config = None) -> dict:
+def getFavBlogs(offset: int = 0, config: Config = None) -> dict:
     """获取一组收藏的动态(不递归)。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
           f"&_t={int(time.time())}&token={config.token}"
-    return _request('get', 'json', "getFavBlogsRaw", url, config=config)
+    return _request('get', 'json', "getFavBlogs", url, config=config)
 
 
 @startEnd
@@ -167,7 +167,7 @@ def getAllFavBlogs(return_dict: bool = False, config: Config = None) -> Union[li
         if offset != 0 and config.verbose:
             print(f"[getAllFavBlogs]curr offset: {offset}")
         try:
-            data = getFavBlogsRaw(offset, config)
+            data = getFavBlogs(offset, config)
         except ExhaustedRetriesError as e:
             if config.verbose:
                 print(f"[getAllFavBlogs]{config.colorRed}fail to get all favorite blogs: {e}")
@@ -199,12 +199,14 @@ def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Con
 
 
 @startEnd
-def getBlogCollectionRaw(bid: int, config: Config = None):
+def getBlogCollection(bid: int, config: Config = None) -> dict:
     """获取指定bid的动态合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/{bid}/collection/"
-    return _request('get', 'json', 'getBlogCollectionRaw', url, config=config)
+    res = _request('get', 'json', 'getBlogCollection', url, config=config)
+    del res['status']
+    return res
 
 
 @startEnd
