@@ -47,8 +47,8 @@
 
  - **参数**: 
    - `e_mail` -> 邮箱。
-   - `new_pswd` -> 密码。
+   - `pswd` -> 密码。
    - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
-   - *可选* `verify_code_: (None) -> int` -> 因为无法获取验证码，所以需要它来返回验证码。默认为`getpass('[register]input verification code: ')`。
+   - *可选* `verify_code_: (None) -> int` -> 因为无法获取验证码，所以需要它来返回验证码。默认为`getpass('[register]input verification code: ')`。**若需覆盖**，确保函数返回`int`类型，且不需要传参。
  - **返回格式未确认**。
  - **注意**: `useStartEnd`**此时无效**(固定为`False`)，以防止日志泄露账号密码。
