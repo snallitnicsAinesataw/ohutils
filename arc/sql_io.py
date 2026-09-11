@@ -257,7 +257,10 @@ def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwa
         if len(k_list) == 1:
             kv.append(k + '=?')  # 无后缀
         else:
-            kv.append(k_list[0] + {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!=', 'like': ' LIKE '}[k_list[1]] + '?')
+            map_ = {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!=', 'like': ' LIKE '}
+            if k_list[1] not in map_.keys():
+                map_[k_list[1]] = '__'+k_list[1]
+            kv.append(k_list[0] + map_[k_list[1]] + '?')
     cond = ('WHERE ' if kwargs.keys() else '') + " AND ".join(kv)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"
     cur.execute(query, tuple(kwargs.values()))

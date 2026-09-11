@@ -53,6 +53,8 @@ class Config:
     tagsPerReq: int = 12
     seigaPerReq: int = 20
     userPerReq: int = 18
+    # peripheral相关: OTTOMedia
+    mediaPerReq: int = 12
 
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
@@ -64,6 +66,8 @@ class Config:
     OBCCommentIdxName: str = "comment_index_obc.json"
     seigaPath: str = 'D:\\_ARCHIVE\\SEIGA\\'
     seigaName: str = "sid{sid}_p{page}.jpg"
+    mediaPath: str = "D:\\_ARCHIVE\\MEDIA\\"
+    mediaName: str = "m_id{m_id}.{ext}"
 
     SQLName: str = "ohutils.db"
     useSQL: bool = False

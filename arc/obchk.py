@@ -88,6 +88,13 @@ class BlogChunk:
     def __str__(self):
         return f"BlogChunk({len(self._index)} entries, {len(self._cache)} cached)"
 
+    def clearCache(self, bid: int = None):
+        """清空缓存，可以指定bid。"""
+        if bid is None:
+            self._cache.clear()
+        else:
+            self._cache.pop(bid, None)
+
 
 def serializeBlog(bid: int, config: Config = None) -> bytes:
     """将指定bid的.obarc文件序列化。"""

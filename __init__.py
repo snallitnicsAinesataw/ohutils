@@ -12,6 +12,9 @@ from .core.util import (
     appSim, useConfig,
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
+from .peripheral import *
+
+# 日志初始化
 import logging
 if not logging.root.handlers:
     logging.basicConfig(
@@ -22,6 +25,7 @@ if not logging.root.handlers:
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
 
+# 常量
 __version__ = "0.8.0"
 F_ENCRYPT_CONTENT = 1
 F_GORE = 2
@@ -56,3 +60,10 @@ STAT_UNFOLLOWED = 1  # 未关注
 STAT_FOLLOWING = 2  # 关注了对方
 STAT_FOLLOWED = 3  # 被对方关注
 STAT_MUTUAL = 4  # 互关
+MT_IMAGE = '图片'
+MT_AUDIO = '音频'
+MT_VIDEO = '视频'
+MT_DOC = '文档'
+MT_ZIP = '压缩包'
+MT_OTHER = '其他'
+MT_ALL = None  # 神秘API设计，media_type传中文

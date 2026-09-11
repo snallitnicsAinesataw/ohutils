@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 import logging
+from requests import Response
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
@@ -228,10 +229,10 @@ def getVersion(path: str) -> int:
         return f.read(1)[0]  # 版本号
 
 
-def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content'],
+def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
              f_name: str, url: str, *, config: Config = None, data: dict = None,
-             is_long: bool = False, is_chat: bool = False, chat_token: str = None
-             ) -> Union[dict, bytes]:
+             is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
+             ) -> Union[dict, bytes, Response]:
     if config is None:
         config = getGlobalConfig()
     retries = config.retries
@@ -253,7 +254,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
             if chat_token is not None:
                 headers['Authorization'] = 'Bearer ' + chat_token
             if method == 'get':
-                resp = requests.get(url, timeout=timeout, headers=headers)
+                resp = requests.get(url, timeout=timeout, headers=headers, stream=stream)
             elif method == 'post':
                 resp = requests.post(url, timeout=timeout, headers=headers, json=data)
             elif method == 'put':
@@ -271,6 +272,8 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 return jsoned
             elif return_type == 'content':
                 return resp.content
+            elif return_type == 'stream' or stream:
+                return resp
         except requests.HTTPError as e:
             try:
                 jsoned = e.response.json()
