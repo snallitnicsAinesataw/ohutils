@@ -1,6 +1,6 @@
 # 附 I: 导出文件定义
 
-## SQLite数据表定义 (.db)
+## SQLite数据表schema
 
 ### 用户元数据: oh_user_v1
 ```sql
@@ -29,7 +29,7 @@ CHECK (  -- 此约束表: 二进制数据和URL互斥。
 ((avatar IS NULL AND avatar_url IS NOT NULL) OR (avatar IS NOT NULL AND avatar_url IS NULL)) AND
 ((cover_h IS NULL AND cover_h_url IS NOT NULL) OR (cover_h IS NOT NULL AND cover_h_url IS NULL)) AND
 ((cover_v IS NULL AND cover_v_url IS NOT NULL) OR (cover_v IS NOT NULL AND cover_v_url IS NULL)))
-)
+);
 ```
 
 ### 动态数据: oh_blog_v1
@@ -51,7 +51,7 @@ title TEXT,
 content TEXT,
 tags TEXT,    -- 标签，以","分隔。
 gore INTEGER   -- 是否为4000+内容。
-)
+);
 ```
 
 ### 动态评论数据: oh_obc_v1
@@ -65,7 +65,7 @@ pub_ts INTEGER,    -- 发布时间戳。
 content TEXT,
 reply_count INTEGER DEFAULT 0,  -- 回复数。
 pin_order INTEGER DEFAULT 0  -- 置顶顺序, 0表｢未置顶｣。
-)
+);
 ```
 
 ### 视频评论数据: oh_ovc_v1
@@ -79,7 +79,7 @@ parent_vcid INTEGER DEFAULT 0,
 pub_ts INTEGER,
 content TEXT,
 reply_count INTEGER DEFAULT 0,
-pin_order INTEGER DEFAULT 0)
+pin_order INTEGER DEFAULT 0);
 ```
 
 ### 静画评论数据: oh_osc_v1
@@ -92,7 +92,7 @@ uid INTEGER,
 parent_scid INTEGER DEFAULT 0,
 pub_ts INTEGER,
 content TEXT,
-reply_count INTEGER DEFAULT 0)
+reply_count INTEGER DEFAULT 0);
 ```
 
 ### 关注信息: oh_follow_v1
@@ -101,5 +101,5 @@ CREATE TABLE oh_follow_v1 (
 uid INTEGER,  -- 关注者uid
 target_uid INTEGER,  -- 被关注者uid
 PRIMARY KEY (uid, target_uid)
-)
+);
 ```

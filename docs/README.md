@@ -1,7 +1,7 @@
 # OHUtils
 [OTTOHub](https://www.ottohub.cn/) 数据工具集。
 
-[文档目录](index.md)
+[文档目录](nav.md)
 
 ---
 ## 功能
