@@ -319,7 +319,7 @@ def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
     return blog
 
 
-def loadObarc(bid: int, config: Config = None) -> BlogEntry:
+def loadBlog(bid: int, config: Config = None) -> BlogEntry:
     """从config.savePath中加载.obarc文件。"""
     if config is None:
         config = getGlobalConfig()
@@ -328,7 +328,7 @@ def loadObarc(bid: int, config: Config = None) -> BlogEntry:
     return _loadObarc(ver, bid, config)
 
 
-def loadObarcBytes(f_bytes: bytes) -> BlogEntry:
+def loadBlogBytes(f_bytes: bytes) -> BlogEntry:
     header = f_bytes[:32]
     version = header[5]
     flags = header[6]
@@ -395,7 +395,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bo
     return file_path, True
 
 
-def archiveBlog(bid: int, config: Config = None) -> Tuple[str, bool]:
+def saveBlog(bid: int, config: Config = None) -> Tuple[str, bool]:
     """存储动态至.obarc文件。
     config.policy: keep(不动原存档), override(覆盖), merge(混合新数据与原数据)"""
     return _archiveBlog(CURR_LATEST_OBARC_VER, bid, config)

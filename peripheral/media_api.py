@@ -16,7 +16,8 @@ def getMediaDetail(m_id: int, config: Config = None) -> dict:
 def searchMedia(term: str, offset: int = 0, m_type: str = None, tags: list[str] = None,
                 id_asc: bool = False, size_asc: bool = True, spec_uid: int = None,
                 size_min: int = None, size_max: int = None, config: Config = None) -> dict:
-    """搜索素材。"""
+    """搜索素材。
+    m_type支持的常量: ohutils.MT_*"""
     if config is None:
         config = getGlobalConfig()
     if tags is None:
@@ -26,14 +27,14 @@ def searchMedia(term: str, offset: int = 0, m_type: str = None, tags: list[str] 
         'offset': offset,
         'num': config.mediaPerReq,
         'media_id_desc': int(not id_asc),
-        'media_id_asc': int(id_asc),
+        'media_id_asc': int(id_asc),  # 那个神秘前端这两个开关竟然能同时勾选
         'file_size_desc': int(not size_asc),
-        'file_size_asc': int(size_asc),
+        'file_size_asc': int(size_asc),  # 这俩也是，虽然我没测试同时勾选会怎么样
     }
     if m_type is not None:
         params['media_type'] = m_type
     if tags:
-        params['tag'] = '#'.join(tags)
+        params['tag'] = ''.join('#'+t for t in tags)
     if spec_uid is not None:
         params['uid'] = spec_uid
     if size_min is not None:

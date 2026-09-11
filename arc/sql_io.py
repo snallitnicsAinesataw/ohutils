@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from typing import Union
+from typing import Union, Any
 from time import time
 from ..core.config import Config, getGlobalConfig
 from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry
@@ -13,38 +13,39 @@ def _tag_factory(tags: list[str]) -> str:
 
 
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
-_MAP = {1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
+_MAP = {
+    1: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
         sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover_h BLOB, cover_v BLOB, video INTEGER, blog INTEGER,
         seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER, avatar_url TEXT, cover_h_url TEXT, cover_v_url TEXT,
         CHECK (((avatar IS NULL AND avatar_url IS NOT NULL) OR (avatar IS NOT NULL AND avatar_url IS NULL)) AND 
         ((cover_h IS NULL AND cover_h_url IS NOT NULL) OR (cover_h IS NOT NULL AND cover_h_url IS NULL)) AND 
         ((cover_v IS NULL AND cover_v_url IS NOT NULL) OR (cover_v IS NOT NULL AND cover_v_url IS NULL)))''', 'uid'),
-        2: ('oh_blog_v1', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
+    2: ('oh_blog_v1', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
         blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER''', 'bid'),
-        5: ('oh_obc_v1', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
+    5: ('oh_obc_v1', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'bcid'),
-        6: ('oh_ovc_v1', '''vcid INTEGER PRIMARY KEY NOT NULL, vid INTEGER, uid INTEGER, parent_vcid INTEGER DEFAULT 0,
+    6: ('oh_ovc_v1', '''vcid INTEGER PRIMARY KEY NOT NULL, vid INTEGER, uid INTEGER, parent_vcid INTEGER DEFAULT 0,
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid'),
-        7: ('oh_osc_v1', '''scid INTEGER PRIMARY KEY NOT NULL, sid INTEGER, uid INTEGER, parent_scid INTEGER DEFAULT 0, 
+    7: ('oh_osc_v1', '''scid INTEGER PRIMARY KEY NOT NULL, sid INTEGER, uid INTEGER, parent_scid INTEGER DEFAULT 0, 
         pub_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'scid'),
-        9: ('oh_follow_v1', 'uid INTEGER, target_uid INTEGER, PRIMARY KEY (uid, target_uid)', '(uid, target_uid)'),
-        10: ('oh_blog_collection_v1', '''bid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+    9: ('oh_follow_v1', 'uid INTEGER, target_uid INTEGER, PRIMARY KEY (uid, target_uid)', '(uid, target_uid)'),
+    10: ('oh_blog_collection_v1', '''bid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
         PRIMARY KEY (name, bid)''', '(name, bid)'),
-        11: ('oh_video_collection_v1', '''vid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+    11: ('oh_video_collection_v1', '''vid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
         PRIMARY KEY (name, vid)''', '(name, vid)'),
-        12: ('oh_seiga_collection_v1', '''sid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
+    12: ('oh_seiga_collection_v1', '''sid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, order INTEGER, 
         PRIMARY KEY (name, sid)''', '(name, sid)'),
-        13: ('oh_seiga_v1', '''sid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, title TEXT, desc TEXT, pages INTEGER, 
+    13: ('oh_seiga_v1', '''sid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, title TEXT, desc TEXT, pages INTEGER, 
         is_doujin INTEGER DEFAULT 0, is_ai INTEGER DEFAULT 0, is_gore INTEGER DEFAULT 0, hall TEXT, 
         pub_ts INTEGER DEFAULT 946656000, fav INTEGER, view INTEGER, comment_count INTEGER''', 'sid'),
-        14: ('oh_seiga_tag_v1', 'tid INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL', 'tid'),
-        15: ('oh_seiga_tagmap_v1', '''sid INTEGER NOT NULL, tid INTEGER NOT NULL, is_locked INTEGER DEFAULT 0, 
+    14: ('oh_seiga_tag_v1', 'tid INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL', 'tid'),
+    15: ('oh_seiga_tagmap_v1', '''sid INTEGER NOT NULL, tid INTEGER NOT NULL, is_locked INTEGER DEFAULT 0, 
         lock_sort INTEGER DEFAULT 0, added_by INTEGER, PRIMARY KEY (sid, tid)''', '(sid, tid)'),
-        16: ('oh_seiga_page_v1', '''sid INTEGER PRIMARY KEY NOT NULL, page_no INTEGER, asset_id INTEGER, original BLOB, 
+    16: ('oh_seiga_page_v1', '''sid INTEGER PRIMARY KEY NOT NULL, page_no INTEGER, asset_id INTEGER, original BLOB, 
         original_url TEXT, width INTEGER, height INTEGER, is_animated INTEGER DEFAULT 0, CHECK 
         ((original IS NULL AND original_url IS NOT NULL) OR (original IS NOT NULL AND original_url IS NULL))''', 'sid')
-        }
+}
 ##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
 _MAP_USER = {'uid': ('uid', int), 'username': ('name', None), 'intro': ('intro', None),
@@ -85,12 +86,13 @@ _MAP_SEIGA_API = {'sid': ('sid', int), 'uid': ('uid', int), 'title': ('title', N
 # sql_type集合是map_type集合的真子集。
 _META_MAP = {1: _MAP_USER, 2: _MAP_BLOG, 3: _MAP_OBC_API, 4: _MAP_BLOG_ENTRY, 5: _MAP_OBC, 6: _MAP_OVC, 7: _MAP_OSC,
              8: _MAP_OSC_API, 13: _MAP_SEIGA_API}
-
-
+# 各种*2DB返回的是sql_type不是map_type。0是未知类型。
+# 我服了我自己了，写出来一个奇丑的tuple[tuple[int, dict], tuple[int, list[dict]], tuple[int, list[dict]], tuple[int, list[dict]]]。
+# 我在干什么。现在凌晨2点半了。果然熬夜写这个不好。
 #########################################################################################
 
 
-def _process(data: dict, sql_type: int):
+def _process(data: dict, sql_type: int) -> dict:
     mapped = {}
     for api_key, (db_key, factory) in _META_MAP[sql_type].items():
         if api_key in data:
@@ -102,8 +104,8 @@ def _process(data: dict, sql_type: int):
 
 
 @startEnd
-def user2DB(data: dict, send_request: bool = True, config: Config = None) -> dict:
-    """映射getUserDetailRaw(...)的字段至oh_user，附处理。
+def user2DB(data: dict, send_request: bool = True, config: Config = None) -> tuple[tuple[int, dict]]:
+    """映射getUserDetail(...)的字段至oh_user，附处理。
     send_request: 是否发送请求以获取用户头像和封面，默认为True。"""
     if config is None:
         config = getGlobalConfig()
@@ -116,11 +118,11 @@ def user2DB(data: dict, send_request: bool = True, config: Config = None) -> dic
     else:
         mapped['avatar_url'] = mapped['avatar_url']
         mapped['cover_h_url'], mapped['cover_v_url'] = data['cover_h_url'], data['cover_v_url']
-    return mapped
+    return (1, mapped),
 
 
-def blog2DB(data: Union[dict, BlogEntry]) -> dict:
-    """映射getBlogRaw(...)和BlogEntry的字段至oh_blog。"""
+def blog2DB(data: Union[dict, BlogEntry]) -> tuple[tuple[int, dict]]:
+    """映射getBlogDetail(...)和BlogEntry的字段至oh_blog。"""
     if isinstance(data, BlogEntry):
         data = data.toDictShallow()
         mapped = _process(data, 4)  # 4: BLOG_ENTRY
@@ -128,31 +130,37 @@ def blog2DB(data: Union[dict, BlogEntry]) -> dict:
     else:
         mapped = _process(data, 2)  # 2: BLOG
         mapped['arc_ts'] = int(time())  # 使用当前时间代替
-    return mapped
+    return (2, mapped),
 
 
-def commentRaw2DB(data: list[dict], from_id: int = 0) -> list[dict]:
-    """映射get*CommentListRaw(...)的字段至对应的数据表。会自动判断评论类型。
+def commentRaw2DB(data: list[dict], from_id: int = 0) -> tuple[tuple[int, list[dict]]]:
+    """不建议使用。
+    映射_get*CommentList(...)的字段至对应的数据表。会自动判断评论类型。
     提供from_id: int以向表中存储评论所在的bid/sid字段。"""
     res = []
-    if data.get("bcid"):
+    id_ = 0
+    if len(data) == 0:
+        return (0, []),
+    if data[0].get("bcid"):
         # blog
         for b in data:
             mapped = _process(b, 3)  # 3: OBC_API
             if from_id:
                 mapped['bid'] = from_id
             res.append(mapped)
-    elif data.get("scid"):
+        id_ = 3
+    elif data[0].get("scid"):
         # seiga
         for b in data:
             mapped = _process(b, 8)  # 8: OSC_API
             if from_id:
                 mapped['sid'] = from_id
             res.append(mapped)
-    return res
+        id_ = 8
+    return (id_, res),
 
 
-def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0):
+def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0) -> tuple[tuple[int, dict]]:
     """映射getAll*Comments(...)和Comment的字段至对应的数据表。
     提供from_id: int以向表中存储评论所在的bid/vid/sid字段。"""
     if data.c_type == 'blog':
@@ -160,34 +168,39 @@ def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0):
         mapped = _process(d, 5)  # 5: OBC
         if from_id:
             mapped['bid'] = from_id
+        id_ = 5
     elif data.c_type == 'video':
         d = asdict(data)
         mapped = _process(d, 6)  # 6: OVC
         if from_id:
             mapped['vid'] = from_id
+        id_ = 6
     elif data.c_type == 'seiga':
         d = asdict(data)
         mapped = _process(d, 7)  # 7: OSC
         if from_id:
             mapped['sid'] = from_id
+        id_ = 7
     else:
         raise ValueError(f'不支持的Comment.c_type类型: {data.c_type}')
-    return mapped
+    return (id_, mapped),
 
 
-def following2DB(main_uid: int, data: list[dict]) -> list[tuple[int, int]]:
-    """映射关注的用户信息至数据表。需要提供main_uid (关注者uid)。返回[(uid, target_uid), ...]。
+def following2DB(data: list[dict], main_uid: int) -> tuple[tuple[int, list[tuple[int, int]]]]:
+    """映射关注的用户信息至数据表。需要提供main_uid (关注者uid)。返回((9, [uid, target_uid), ...]))。
     data可以从ohutils.user_api.getAllFollowings(main_uid)获取。"""
     result = []
     for relation in data:
         result.append((main_uid, relation['uid']))
-    return result
+    return (9, result),
 
 
-def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[dict, list[dict], list[dict], list[dict]]:
-    """映射getSeigaDetailRaw(...)的字段至数据表。
+@startEnd
+def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[
+    tuple[int, dict], tuple[int, list[dict]], tuple[int, list[dict]], tuple[int, list[dict]]]:
+    """映射getSeigaDetail(...)的字段至数据表。
     send_request: 是否发送请求以获取原始静画，默认为False(仅存储URL)。
-    返回[oh_seiga_v1, oh_seiga_tag_v1, oh_seiga_tagmap_v1, oh_seiga_page_v1]。"""
+    返回((13, oh_seiga_v1), (14, oh_seiga_tag_v1), (15, oh_seiga_tagmap_v1), (16, oh_seiga_page_v1))。"""
     sid = int(data['sid'])
     mapped = _process(data, 13)  # 13: SEIGA_API
     tag_dicts, tagmap_dicts, page_dicts = [], [], []
@@ -204,7 +217,34 @@ def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> t
         else:
             p_dict['original_url'] = p['original_url']
         page_dicts.append(p_dict)
-    return mapped, tag_dicts, tagmap_dicts, page_dicts
+    return (13, mapped), (14, tag_dicts), (15, tagmap_dicts), (16, page_dicts)
+
+
+def auto2DB(data, **kwargs):
+    """自动判断类型并映射字段。
+    main_uid: (仅following)关注者uid。
+    from_id: (可选，仅Comment)评论所在的bid/vid/sid字段。
+    send_request: (可选，仅user dict和seiga dict)是否发送请求以获取用户头像和封面，默认为True。
+    config: (可选，仅user dict和seiga dict)配置。"""
+    if isinstance(data, BlogEntry):
+        return blog2DB(data)  # blog2DB的BlogEntry式
+    if isinstance(data, Comment):
+        return comment2DB(data, **kwargs)
+    if isinstance(data, list):
+        if not data:
+            return (0, []),
+        if 'bcid' in data[0] or 'scid' in data[0]:
+            return commentRaw2DB(data, **kwargs)
+        if 'follow_status' in data[0]:
+            return following2DB(data, **kwargs)
+    if isinstance(data, dict):
+        if 'bid' in data and 'title' in data:
+            return blog2DB(data)  # blog2DB的dict式
+        if 'uid' in data and 'username' in data:
+            return user2DB(data, **kwargs)
+        if 'sid' in data and 'description' in data:
+            return seiga2DB(data, **kwargs)
+    raise ValueError("无法识别数据类型")
 
 
 def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
@@ -218,23 +258,39 @@ def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
     return conn
 
 
-def writeData(sql_type: int, conn: sqlite3.Connection, no_update: bool = False, **kw):
+def _writeData(sql_type: int, data: dict, conn: sqlite3.Connection, no_update: bool = False):
     cur = conn.cursor()
-    keys = kw.keys()
+    keys = data.keys()
     table_name, _, prim_key = _MAP[sql_type]
     if no_update:
         cur.execute(
             f"INSERT OR IGNORE INTO {table_name} ({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))})",
-            tuple(kw.values())
+            tuple(data.values())
         )
     else:
         conflict = f"ON CONFLICT({prim_key}) DO UPDATE SET " + \
                    ", ".join([f"{k} = excluded.{k}" for k in keys if k != prim_key])
         cur.execute(
             f"INSERT INTO {table_name} ({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))}) {conflict}",
-            tuple(kw.values())
+            tuple(data.values())
         )
     conn.commit()
+
+
+def writeSQL(batches: tuple[tuple[int, Any]], no_update: bool = False, config: Config = None):
+    """批量写入数据库。
+    batches格式: ((sql_type, sql_dict), ...)"""
+    if config is None:
+        config = getGlobalConfig()
+    conn = sqlite3.connect(os.path.join(config.indexPath, config.SQLName))
+    cur = conn.cursor()
+    for sql_type, sql_dict in batches:
+        if sql_type == 0:
+            continue
+        table_name, table_def, _ = _MAP[sql_type]
+        cur.execute(f'CREATE TABLE IF NOT EXISTS {table_name} ({table_def})')
+        _writeData(sql_type, sql_dict, conn, no_update)
+    conn.close()
 
 
 def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwargs) -> list:
@@ -251,15 +307,15 @@ def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwa
     cur = conn.cursor()
     fields_str = ", ".join(fields) if fields else "*"
     kv = []
+    map_ = {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!=', 'like': ' LIKE '}
     for k in kwargs.keys():
         # 哦还有rsplit这种东西的啊。
         k_list = k.rsplit('__', maxsplit=1)
         if len(k_list) == 1:
             kv.append(k + '=?')  # 无后缀
         else:
-            map_ = {'lt': '<', 'gt': '>', 'le': '<=', 'ge': '>=', 'ne': '!=', 'like': ' LIKE '}
             if k_list[1] not in map_.keys():
-                map_[k_list[1]] = '__'+k_list[1]
+                map_[k_list[1]] = '__' + k_list[1]
             kv.append(k_list[0] + map_[k_list[1]] + '?')
     cond = ('WHERE ' if kwargs.keys() else '') + " AND ".join(kv)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"

@@ -3,7 +3,7 @@ import re
 import os
 import json
 from ..core.util import getVersion, flattenComments, logger
-from .obarc import loadObarc
+from .obarc import loadBlog
 from ..core.config import Config, getGlobalConfig
 
 
@@ -21,7 +21,7 @@ def buildBlogIndex(config: Config = None):
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadObarc(bid, config)
+            blog = loadBlog(bid, config)
             index[bid] = {
                 'bid': bid,
                 'uid': blog.uid,
@@ -49,7 +49,7 @@ def buildUserCommentIdx(config: Config = None):
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadObarc(bid, config)
+            blog = loadBlog(bid, config)
             for c in flattenComments(blog.comments):
                 uid = c.uid
                 index[uid] = index.get(uid, [])
@@ -81,7 +81,7 @@ def buildOBCCommentIdx(config: Config = None):
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadObarc(bid, config)
+            blog = loadBlog(bid, config)
             for c in flattenComments(blog.comments):
                 bcid = c.cid
                 index[bcid] = {
@@ -112,7 +112,7 @@ def buildAllIndexes(config: Config = None):
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadObarc(bid, config)
+            blog = loadBlog(bid, config)
             # ob部分
             ob[bid] = {'bid': bid, 'uid': blog.uid, 'ts': blog.timestamp, 'arcts': blog.arc_time,
                        'c_len': len(blog.comments), 'ver': getVersion(path), 'size': os.path.getsize(path),
