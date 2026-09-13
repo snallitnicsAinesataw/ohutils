@@ -1,5 +1,5 @@
 import os
-from ..core.util import startEnd, _request
+from ..core.util import startEnd, _request, logger
 from ..core.config import Config, getGlobalConfig
 import requests
 
@@ -51,9 +51,15 @@ def downloadMedia(m_id: int, chunk_size: int = 8192, config: Config = None):
     """下载素材。"""
     if config is None:
         config = getGlobalConfig()
+    suffix = '.ohu-downloading'
     media = getMediaDetail(m_id, config)
     resp = _request('get', 'stream', 'downloadMedia', media['file_url'], config=config, stream=True)
-    fp = os.path.join(config.mediaPath, config.mediaName.format(m_id=media["media_id"], ext=media["extension"]))
+    fp = os.path.join(config.mediaPath, config.mediaName.format(m_id=media["media_id"], ext=media["extension"]) + suffix)
+    fp_new = fp
     with open(fp, "wb") as f:
         for chunk in resp.iter_content(chunk_size=chunk_size):
             f.write(chunk)
+    if fp.endswith(suffix):
+        fp_new = fp[:-len(suffix)]
+    os.replace(fp, fp_new)
+    logger.info(f'[downloadMedia]media downloaded: {fp_new}')

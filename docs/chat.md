@@ -1,10 +1,8 @@
 # 2.1 聊天室API
 此文档对应`ohutils.chat_api.*` 即`core\chat_api.py`。
 
-所有的`time_str`结构为`YYYY-MM-DD HH:MM:SS`，可以使用`parseTime`处理为时间戳。
-
 ---
-## 2.1.1 getChatToken()
+## 2.1.1 getChatToken() 🔑
 `getChatToken(config: Config = None) -> str`
 
 获取聊天室所需要的`chat_token`。
@@ -12,7 +10,7 @@
  - **参数**: *可选* `config` -> Config对象。需要在对象中包含有效`token`。不提供则使用全局配置或`useConfig(...)`设定的配置。
  - **返回**: `chat_token` (e.g. `'f339af2b...50a5'`)。
 
-## 2.1.2 me()
+## 2.1.2 me() 🔑
 `me(chat_token: str, config: Config = None) -> dict`
 
 获取提供的`chat_token`对应用户的信息原始数据。
@@ -23,7 +21,7 @@
  - **返回**: 字典`{uid: int, username: str, is_admin: int, mute}`。
  - **注**: `mute`字段当前未知具体含义。
 
-## 2.1.3 getChats()
+## 2.1.3 getChats() 🔓🔑
 `getChats(config: Config = None) -> dict`
 
 获取聊天室消息和公告。在`config.alwaysUseToken=True`时，会发送请求以获得`chat_token`。
@@ -35,8 +33,8 @@
    - **message_list**: `[{id: int, room: str, uid: int, username: str, content: str, created_at: time_str, reply: dict?},...]`
    - **reply**: `{id: int, uid: int, username: str, content: str, deleted: bool}`。若为`None`则表示不回复消息。
  
-## 2.1.4 connectChat()
-`connectChat(room, config, threaded, beat_interval, 
+## 2.1.4 connectChat() 🔑🔓
+`connectChat(room, config, threaded, beat_interval, guest, 
 on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat, on_online_change, on_welcome)
   -> tuple[ChatClient, Thread] | ChatClient`
 
@@ -44,10 +42,11 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 
  - **参数**: 
    - *可选* `room` -> 房间名。默认为`main`，对应[主聊天室](https://www.ottohub.cn/chat/) 。
-   - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
+   - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。在`guest`为`False`时需要有效的`token`。
    - *可选* `threaded` -> 是否开启新线程运行客户端。默认为`True`。
     否则返回`ChatClient`实例，此时需要手动调用`client.run_forever()`以运行客户端。
    - *可选* `beat_interval` -> 发送ping包的时间间隔。默认为30，单位：**秒**。
+   - *可选* `guest` -> 以访客模式运行。默认为`False`。
    - *可选* `on_open` -> 在WebSocket打开时调用的回调函数。接收一个参数，为WebSocket实例。 
    - *可选* `on_reconnect` -> 在WebSocket重新连接时调用的回调函数。接收一个参数，为WebSocket实例。
    - *可选* `on_message` -> 在接收到数据时调用的回调函数。接收两个参数，第一个参数为WebSocket实例，第二个参数是从服务器接收到的字典。
@@ -74,7 +73,7 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 | `welcome`         | `is_admin` -> 是否为管理员。在默认行为下，此值会存储为`is_admin: bool`。                                                                            |
 |                   | `mute` -> 禁言状态。在默认行为下，此值会存储为`mute`。                                                                                            |
 |                   | `pinned_announcement{room, content, pinned, updated_by: int, updated_at: time_str}` -> 置顶公告。在默认行为下，此值会存储为`announcement: dict`。 |
-|                   | `role` -> 角色。在默认行为下，此值会存储为`role`。                                                                                              |
+|                   | `role` -> 角色。未登录为`guest`，已登录为`member`。在默认行为下，此值会存储为`role`。                                                                     |
 |                   | `room` -> 房间名称。                                                                                                                |
 |                   | `uid` -> `chat_token`所对应`uid`。在默认行为下，此值会存储为`uid`。                                                                              |
 |                   | `name` -> `chat_token`所对应`uid`的用户名。在默认行为下，此值会存储为`name`。                                                                        |
@@ -90,13 +89,13 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 | `message_deleted` | `id` -> 消息id。                                                                                                                  |
 |                   | `room` -> 房间名称。                                                                                                                |
 
-## 2.1.5 ChatClient类
+## 2.1.5 ChatClient类 🔑🔓
 > **通常不需要直接实例化**，而是使用`connectChat()`创建。
 
 聊天室客户端。`websocket.WebSocketApp`的包装。
 **参数**见 2.1.4。
 
-### 2.1.5.2 client.sendMessage()
+### 2.1.5.2 client.sendMessage() 🔑
 `client.sendMessage(self, content: str, reply_id: int = None) -> None`
 
 发送消息。
@@ -105,22 +104,22 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
    - `content` -> 消息内容。
    - *可选* `reply_id` -> 回复的消息id。
 
-### 2.1.5.3 client.deleteMessage()
+### 2.1.5.3 client.deleteMessage() 🔑
 `client.deleteMessage(self, msg_id: int) -> None`
 
 删除聊天消息。**参数**: `msg_id` -> 消息id。
 
-### 2.1.5.4 client.blockUser() & client.unblockUser()
+### 2.1.5.4 client.blockUser() & client.unblockUser() 🔑
 `client.blockUser(self, uid: int) -> None` `client.unblockUser(self, uid: int) -> None`
 
 拉黑/取消拉黑指定uid。
 
-### 2.1.5.5 getBlockUsers()
+### 2.1.5.5 getBlockUsers() 🔑
 `client.getBlockUsers(self) -> list`
 
 返回拉黑用户列表`[{uid, username, created_at: time_str},...]`。
 
-## 2.1.6 deleteMessage(), blockUser(), unblockUser(), getBlockUsers()
+## 2.1.6 deleteMessage() 🔑, blockUser() 🔑, unblockUser() 🔑, getBlockUsers() 🔑
 > **不建议直接使用。** 应使用connectChat()返回的ChatClient进行操作。
 
 `blockUser(uid: int, chat_token: str, config: Config = None) -> None`

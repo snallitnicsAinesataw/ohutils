@@ -2,6 +2,7 @@ from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, l
 from .config import Config, getGlobalConfig
 from typing import Literal
 from .exception import ExhaustedRetriesError, APIError
+import os
 
 
 @startEnd
@@ -114,3 +115,22 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         offset += config.commentPerReq
         time.sleep(random.uniform(*config.commentBatchDelay))
     return all_comments
+
+
+@startEnd
+def downloadVideo(vid: int, chunk_size: int = 8192, config: Config = None):
+    """下载指定vid的视频。"""
+    if config is None:
+        config = getGlobalConfig()
+    suffix = '.ohu-downloading'
+    video = getVideoDetail(vid, config)
+    resp = _request('get', 'stream', 'downloadVideo', video['video_url'], config=config, stream=True)
+    fp = os.path.join(config.videoPath, config.videoName.format(vid=video['vid'], uid=video['uid']) + suffix)
+    fp_new = fp
+    with open(fp, "wb") as f:
+        for chunk in resp.iter_content(chunk_size=chunk_size):
+            f.write(chunk)
+    if fp.endswith(suffix):
+        fp_new = fp[:-len(suffix)]
+    os.replace(fp, fp_new)
+    logger.info(f'[downloadVideo]video downloaded: {fp_new}')

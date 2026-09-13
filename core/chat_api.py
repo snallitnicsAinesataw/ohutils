@@ -10,8 +10,9 @@ from typing import Optional, Callable, Any, Union, Tuple
 
 class ChatClient(websocket.WebSocketApp):
     def __init__(self,
-                 token: str,
+                 token: str = None,
                  room: str = 'main',
+                 guest: bool = False,
                  config: Config = None,
                  on_open: Callable[[websocket.WebSocketApp], None] = None,
                  on_message: Callable[[websocket.WebSocketApp, dict], None] = None,
@@ -27,10 +28,13 @@ class ChatClient(websocket.WebSocketApp):
                  ):
         """聊天室客户端。websocket.WebSocketApp的包装。
         通常不需直接实例化，而是使用connectChat()创建。如需直接使用，参数含义与connectChat()一致。"""
-        self._url = f'wss://{config.chatAPIBase}ws?room={room}&token={token}'
+        if token is None and not guest:
+            raise ValueError("非guest模式需要chat_token")
+        self._url = f'wss://{config.chatAPIBase}ws?room={room}' + ('' if guest else f'&token={token}')
         self.ws = None
         self._token = token
         self.room = room
+        self._guest = guest
         self._config = config
         self._user_on_open = on_open
         self._user_on_message = on_message
@@ -96,7 +100,10 @@ class ChatClient(websocket.WebSocketApp):
                 self.announcement: Optional[dict] = data.get('pinned_announcement')
                 self.role = data.get('role')
                 if self._config.verbose:
-                    logger.info(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
+                    if self._guest:
+                        logger.info(f'[ChatClient/msg:welcome]Welcome! (guest)')
+                    else:
+                        logger.info(f'[ChatClient/msg:welcome]Welcome {self.name}(ou{self.uid})! ({self.role})')
         elif type_ == 'online_count':
             if self._user_on_online_change:
                 self._user_on_online_change(ws, data)
@@ -150,6 +157,8 @@ class ChatClient(websocket.WebSocketApp):
 
     def sendMessage(self, content: str, reply_id: int = None):
         """发送聊天消息。"""
+        if self._guest:
+            return
         load = {'type': 'message', 'content': content}
         if reply_id is not None:
             load['reply'] = reply_id
@@ -157,18 +166,26 @@ class ChatClient(websocket.WebSocketApp):
 
     def deleteMessage(self, msg_id: int):
         """删除聊天消息。"""
+        if self._guest:
+            return
         return deleteMessage(msg_id, self._token, self._config)
 
     def blockUser(self, uid: int):
         """拉黑指定uid。"""
+        if self._guest:
+            return
         return blockUser(uid, self._token, self._config)
 
     def unblockUser(self, uid: int):
         """取消拉黑指定uid。"""
+        if self._guest:
+            return
         return unblockUser(uid, self._token, self._config)
 
     def getBlockUsers(self) -> list:
         """获取已被拉黑的用户。"""
+        if self._guest:
+            return []
         return getBlockUsers(self._token, self._config)
 
 
@@ -206,6 +223,7 @@ def getChats(config: Config = None) -> dict:
 
 
 def connectChat(room: str = 'main', config: Config = None, threaded: bool = True, beat_interval: int = 30,
+                guest: bool = False,
                 on_open: Callable[[websocket.WebSocketApp], None] = None,
                 on_message: Callable[[websocket.WebSocketApp, dict], None] = None,
                 on_error: Callable[[websocket.WebSocketApp, Any], None] = None,
@@ -217,14 +235,17 @@ def connectChat(room: str = 'main', config: Config = None, threaded: bool = True
                 on_online_change: Callable[[websocket.WebSocketApp, dict], None] = None,
                 on_welcome: Callable[[websocket.WebSocketApp, dict], None] = None
                 ) -> Union[tuple[ChatClient, Thread], ChatClient]:
-    """自动获取chat_token并连接聊天室。需要token。
+    """自动获取chat_token并连接聊天室。在guest=False时需要token。
     threaded: 是否开启新线程运行客户端。若为True，则返回(ChatClient, Thread);
     否则返回ChatClient，此时需要手动调用client.run_forever()。
     """
     if config is None:
         config = getGlobalConfig()
-    token = getChatToken(config)
-    client = ChatClient(token, room, config, on_open=on_open, on_reconnect=on_reconnect, on_message=on_message,
+    if guest:
+        token = None
+    else:
+        token = getChatToken(config)
+    client = ChatClient(token, room, guest, config, on_open=on_open, on_reconnect=on_reconnect, on_message=on_message,
                         on_error=on_error, on_ping=on_ping, on_chat=on_chat, on_close=on_close, on_pong=on_pong,
                         on_online_change=on_online_change, heartbeat_interval=beat_interval, on_welcome=on_welcome)
     if threaded:

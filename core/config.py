@@ -68,6 +68,8 @@ class Config:
     seigaName: str = "sid{sid}_p{page}.jpg"
     mediaPath: str = "D:\\_ARCHIVE\\MEDIA\\"
     mediaName: str = "m_id{m_id}.{ext}"
+    videoPath: str = "D:\\_ARCHIVE\\VIDEO\\"
+    videoName: str = "ov{vid}_ou{uid}.mp4"
 
     SQLName: str = "ohutils.db"
     useSQL: bool = False
