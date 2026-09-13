@@ -240,7 +240,7 @@ def auto2DB(data, **kwargs):
     if isinstance(data, dict):
         if 'bid' in data and 'title' in data:
             return blog2DB(data)  # blog2DB的dict式
-        if 'uid' in data and 'username' in data:
+        if 'uid' in data and 'experience' in data and 'sex' in data:
             return user2DB(data, **kwargs)
         if 'sid' in data and 'description' in data:
             return seiga2DB(data, **kwargs)

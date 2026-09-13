@@ -1,5 +1,5 @@
 # 2.1 聊天室API
-此文档对应`core\chat_api.py`。
+此文档对应`ohutils.chat_api.*` 即`core\chat_api.py`。
 
 所有的`time_str`结构为`YYYY-MM-DD HH:MM:SS`，可以使用`parseTime`处理为时间戳。
 
