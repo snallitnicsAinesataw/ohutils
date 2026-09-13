@@ -21,7 +21,7 @@
  - **返回**: 字典`{uid: int, username: str, is_admin: int, mute}`。
  - **注**: `mute`字段当前未知具体含义。
 
-## 2.1.3 getChats() 🔓🔑
+## 2.1.3 getChats() 🔓
 `getChats(config: Config = None) -> dict`
 
 获取聊天室消息和公告。在`config.alwaysUseToken=True`时，会发送请求以获得`chat_token`。

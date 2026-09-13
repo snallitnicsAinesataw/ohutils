@@ -40,7 +40,7 @@
    - *可选* `verify_code_: (None) -> int` -> 因为无法获取验证码，所以需要它来返回验证码。默认为`getpass('[resetPassword]input verification code: ')`。
  - **注意**: `useStartEnd`**此时无效**(固定为`False`)，以防止日志泄露账号密码。
 
-## 2.2.5 register() 🔓
+## 2.2.5 register() 🔓❓
 `register(e_mail: str, pswd: str, config: Config = None, *, verify_code_ = None) -> dict`
 
 注册新账号。
