@@ -1,7 +1,7 @@
 from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger
 from .config import Config, getGlobalConfig
-from typing import Literal
-from .exception import ExhaustedRetriesError, APIError
+from typing import Literal, Union
+from .exception import ExhaustedRetriesError, NotInCollectionError
 import os
 
 
@@ -57,14 +57,17 @@ def getLatestVideos(type_: Literal[0, 1, 3, 4, 5, 6, 7], offset: int = 0, config
 
 
 @startEnd
-def getVideoCollection(vid: int, config: Config = None) -> dict:
+def getVideoCollection(vid: int, config: Config = None) -> Union[dict, None]:
     """获取给定vid的所在合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/videos/{vid}/collection"
-    res = _request('get', 'json', "getVideoCollection", url, config=config)
-    del res['success']
-    return res
+    try:
+        res = _request('get', 'json', "getVideoCollection", url, config=config)
+        del res['status']
+        return res
+    except NotInCollectionError:
+        return None
 
 
 @startEnd

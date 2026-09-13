@@ -6,11 +6,11 @@
 ---
 ## 功能
 - API封装
-- 动态/视频/静画等数据获得
-- 多格式存档(.obarc, .obchk; .db)
+- 动态/视频/静画/素材等数据获得
+- 多格式存档 (.obarc, .obchk; .db)
 - 聊天室客户端
 
-## 安装
+## 安装 (并不能)
 ```commandline
 pip install ohutils
 ```

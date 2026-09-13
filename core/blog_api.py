@@ -1,5 +1,5 @@
 from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request, logger
-from .exception import ExhaustedRetriesError
+from .exception import ExhaustedRetriesError, NotInCollectionError
 from .config import Config, getGlobalConfig
 import requests
 import time
@@ -197,14 +197,17 @@ def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Con
 
 
 @startEnd
-def getBlogCollection(bid: int, config: Config = None) -> dict:
+def getBlogCollection(bid: int, config: Config = None) -> Union[dict, None]:
     """获取指定bid的动态合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/{bid}/collection/"
-    res = _request('get', 'json', 'getBlogCollection', url, config=config)
-    del res['status']
-    return res
+    try:
+        res = _request('get', 'json', 'getBlogCollection', url, config=config)
+        del res['status']
+        return res
+    except NotInCollectionError:
+        return None
 
 
 @startEnd

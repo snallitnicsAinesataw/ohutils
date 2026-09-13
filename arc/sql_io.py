@@ -4,17 +4,21 @@ from typing import Union, Any
 from time import time
 from ..core.config import Config, getGlobalConfig
 from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from enum import IntEnum
 
 
 def _tag_factory(tags: list[str]) -> str:
-    tags.remove('吉吉国民')
+    try:
+        tags.remove('吉吉国民')
+    except ValueError:
+        pass
     return ','.join(tags)
 
 
 class _MT(IntEnum):
     # 因为记不住。
+    UNKNOWN = 0
     USER = 1
     BLOG = 2
     M_OBC_API = 3
@@ -38,6 +42,12 @@ class _MT(IntEnum):
     CHANNEL_NOTICE = 21
 
 
+@dataclass(frozen=True)
+class _SQLBatch:
+    sql_type: _MT
+    data: Any
+
+
 #########################################################################################
 # {sql_type: int -> tuple[table_name: str, table_def: str, prim_key: str]}
 _MAP = {
@@ -49,13 +59,17 @@ _MAP = {
         ((cover_v IS NULL AND cover_v_url IS NOT NULL) OR (cover_v IS NOT NULL AND cover_v_url IS NULL)))''', 'uid'),
     _MT.BLOG: ('oh_blog_v1', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
-        blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER''', 'bid'),
+        blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER, forward_bid INTEGER,
+        forward_died INTEGER''', 'bid'),
     _MT.OBC: ('oh_obc_v1', '''bcid INTEGER PRIMARY KEY NOT NULL, bid INTEGER, uid INTEGER, parent_bcid INTEGER DEFAULT 0,
-        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'bcid'),
+        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''',
+              'bcid'),
     _MT.OVC: ('oh_ovc_v1', '''vcid INTEGER PRIMARY KEY NOT NULL, vid INTEGER, uid INTEGER, parent_vcid INTEGER DEFAULT 0,
-        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'vcid'),
+        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''',
+              'vcid'),
     _MT.OSC: ('oh_osc_v1', '''scid INTEGER PRIMARY KEY NOT NULL, sid INTEGER, uid INTEGER, parent_scid INTEGER DEFAULT 0, 
-        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''', 'scid'),
+        pub_ts INTEGER, arc_ts INTEGER, content TEXT, reply_count INTEGER DEFAULT 0, pin_order INTEGER DEFAULT 0''',
+              'scid'),
     _MT.FOLLOW: ('oh_follow_v1', 'uid INTEGER, target_uid INTEGER, PRIMARY KEY (uid, target_uid)', '(uid, target_uid)'),
     _MT.BLOG_COLL: ('oh_blog_collection_v1', '''bid INTEGER NOT NULL, uid INTEGER, name TEXT NOT NULL, 
         sort_order INTEGER, arc_ts INTEGER, PRIMARY KEY (name, bid)''', '(name, bid)'),
@@ -101,11 +115,13 @@ _MAP_USER = {'uid': ('uid', int), 'username': ('name', None), 'intro': ('intro',
              'honour': ('honour', None), 'experience': ('exp', int), 'video_num': ('video', int),
              'blog_num': ('blog', int), 'seiga_num': ('seiga', int), 'media_num': ('media', int),
              'followings_count': ('follow', int), 'fans_count': ('fan', int)}
-_MAP_BLOG = {'bid': ('bid', int), 'uid': ('uid', int), 'time': ('pub_ts', parseTime), 'like_count': ('like', int),
-             'favorite_count': ('fav', int), 'view_count': ('view', int), 'attached_vid': ('attached_vid', int),
-             'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
-             'comment_count': ('comment_count', int), 'title': ('title', None), 'content': ('content', None),
-             'is_gore': ('gore', int), 'tag': ('tags', _tag_factory), 'channel_id': ('channel', int)}
+# _MAP_BLOG_API特殊处理forward_died。
+_MAP_BLOG_API = {'bid': ('bid', int), 'uid': ('uid', int), 'time': ('pub_ts', parseTime), 'like_count': ('like', int),
+                 'favorite_count': ('fav', int), 'view_count': ('view', int), 'attached_vid': ('attached_vid', int),
+                 'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
+                 'comment_count': ('comment_count', int), 'title': ('title', None), 'content': ('content', None),
+                 'is_gore': ('gore', int), 'tag': ('tags', _tag_factory), 'channel_id': ('channel', int),
+                 'forward_bid': ('forward_bid', None)}
 # _MAP_OBC_API特殊处理bid, API不返回。
 _MAP_OBC_API = {'bcid': ('bcid', int), 'uid': ('uid', int), 'parent_bcid': ('parent_bcid', int),
                 'time': ('pub_ts', parseTime), 'content': ('content', None), 'child_comment_num': ('reply_count', int),
@@ -113,8 +129,9 @@ _MAP_OBC_API = {'bcid': ('bcid', int), 'uid': ('uid', int), 'parent_bcid': ('par
 _MAP_BLOG_ENTRY = {'bid': ('bid', int), 'uid': ('uid', int), 'timestamp': ('pub_ts', None), 'like_count': ('like', int),
                    'favorite_count': ('fav', int), 'view_count': ('view', int), 'attached_vid': ('attached_vid', int),
                    'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
-                   'title': ('title', None), 'content': ('content', None), 'tags': ('tags', lambda x: ','.join(x)),
-                   'arc_time': ('arc_ts', None), 'channel_id': ('channel', None), 'is_gore': ('gore', int)}
+                   'title': ('title', None), 'content': ('content', None), 'tags': ('tags', _tag_factory),
+                   'arc_time': ('arc_ts', None), 'channel_id': ('channel', None), 'is_gore': ('gore', int),
+                   'forward_bid': ('forward_bid', None), 'is_unavailable': ('forward_died', int)}
 # Comment类没有bid/vid/sid字段。
 _MAP_OBC = {'cid': ('bcid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts', None), 'content': ('content', None),
             'reply_count': ('reply_count', None), 'pin_order': ('pin_order', None), 'parent_cid': ('parent_bcid', None)}
@@ -128,18 +145,30 @@ _MAP_OSC_API = {'bcid': ('scid', int), 'uid': ('uid', int), 'parent_scid': ('par
 _MAP_SEIGA_API = {'sid': ('sid', int), 'uid': ('uid', int), 'title': ('title', None), 'view_count': ('view', int),
                   'description': ('description', None), 'page_count': ('pages', int), 'is_fanwork': ('is_doujin', int),
                   'hall_at': ('hall', None), 'is_ai': ('is_ai', int), 'is_gore': ('is_gore', int),
-                  'time': ('pub_ts', parseTime), 'favorite_count':  ('fav', int),
+                  'time': ('pub_ts', parseTime), 'favorite_count': ('fav', int),
                   'comment_count': ('comment_count', int)}
-
+# _MT.FOLLOW不需要map。
+# _MAP_*_COLL_API特殊处理name, arc_ts。
+_MAP_BLOG_COLL_API = {'bid': ('bid', int), 'uid': ('uid', int), 'collection_sort_order': ('sort_order', int)}
+_MAP_VIDEO_COLL_API = {'vid': ('vid', int), 'uid': ('uid', int), 'collection_sort_order': ('sort_order', int)}
+_MAP_SEIGA_COLL_API = {'sid': ('sid', int), 'uid': ('uid', int), 'collection_sort_order': ('sort_order', int)}
+# _MT.SEIGA_PAGE, _MT.SEIGA_TAG, _MT.SEIGA_TAGMAP不需要map。
 #########################################################################################
 # map_type: int -> map: dict
 # sql_type集合是map_type集合的真子集。
-_META_MAP = {_MT.USER: _MAP_USER, _MT.BLOG: _MAP_BLOG, _MT.M_OBC_API: _MAP_OBC_API, _MT.M_BLOG_ENTRY: _MAP_BLOG_ENTRY,
-             _MT.OBC: _MAP_OBC, _MT.OVC: _MAP_OVC, _MT.OSC: _MAP_OSC,
-             _MT.M_OSC_API: _MAP_OSC_API, _MT.SEIGA: _MAP_SEIGA_API}
-# 各种2DB返回的是sql_type不是map_type。0是未知类型。
+# 未做map：
+# (17, 'oh_video_v1'),
+# (18, 'oh_media_v1'), (19, 'oh_channel_v1'), (20, 'oh_channel_section_v1'), (21, 'oh_channel_notice_v1')]
+# 各种2DB返回的是sql_type不是map_type。
 # 我服了我自己了，写出来一个奇丑的tuple[tuple[int, dict], tuple[int, list[dict]], tuple[int, list[dict]], tuple[int, list[dict]]]。
+# 最后还是改了。
 # 我在干什么。现在(*2026/9/12)凌晨2点半了。果然熬夜写这个不好。
+_META_MAP = {
+    _MT.USER: _MAP_USER, _MT.BLOG: _MAP_BLOG_API, _MT.M_OBC_API: _MAP_OBC_API, _MT.M_BLOG_ENTRY: _MAP_BLOG_ENTRY,
+    _MT.OBC: _MAP_OBC, _MT.OVC: _MAP_OVC, _MT.OSC: _MAP_OSC, _MT.M_OSC_API: _MAP_OSC_API,
+    _MT.BLOG_COLL: _MAP_BLOG_COLL_API, _MT.VIDEO_COLL: _MAP_VIDEO_COLL_API, _MT.SEIGA_COLL: _MAP_SEIGA_COLL_API,
+    _MT.SEIGA: _MAP_SEIGA_API,
+}
 #########################################################################################
 
 
@@ -155,7 +184,7 @@ def _process(data: dict, sql_type: _MT) -> dict:
 
 
 @startEnd
-def user2DB(data: dict, send_request: bool = True, config: Config = None) -> tuple[tuple[int, dict]]:
+def user2DB(data: dict, send_request: bool = True, config: Config = None) -> tuple[_SQLBatch]:
     """映射getUserDetail(...)的字段至oh_user，附处理。
     send_request: 是否发送请求以获取用户头像和封面，默认为True。"""
     if config is None:
@@ -169,10 +198,10 @@ def user2DB(data: dict, send_request: bool = True, config: Config = None) -> tup
     else:
         mapped['avatar_url'] = mapped['avatar_url']
         mapped['cover_h_url'], mapped['cover_v_url'] = data['cover_h_url'], data['cover_v_url']
-    return (1, mapped),
+    return _SQLBatch(_MT.USER, mapped),
 
 
-def blog2DB(data: Union[dict, BlogEntry]) -> tuple[tuple[int, dict]]:
+def blog2DB(data: Union[dict, BlogEntry]) -> tuple[_SQLBatch]:
     """映射getBlogDetail(...)和BlogEntry的字段至oh_blog。"""
     if isinstance(data, BlogEntry):
         data = data.toDictShallow()
@@ -181,17 +210,18 @@ def blog2DB(data: Union[dict, BlogEntry]) -> tuple[tuple[int, dict]]:
     else:
         mapped = _process(data, _MT.BLOG)  # 2
         mapped['arc_ts'] = int(time())  # 使用当前时间代替
-    return (2, mapped),
+        mapped['forward_died'] = data['forward'].get('is_unavailable')
+    return _SQLBatch(_MT.BLOG, mapped),
 
 
-def commentRaw2DB(data: list[dict], from_id: int = 0) -> tuple[tuple[int, list[dict]]]:
+def commentRaw2DB(data: list[dict], from_id: int = 0) -> tuple[_SQLBatch]:
     """不建议使用。
     映射_get*CommentList(...)的字段至对应的数据表。会自动判断评论类型。
     提供from_id: int以向表中存储评论所在的bid/sid字段。"""
     res = []
-    id_ = 0
+    id_ = _MT.UNKNOWN
     if len(data) == 0:
-        return (0, []),
+        return _SQLBatch(id_, []),
     if data[0].get("bcid"):
         # blog
         for b in data:
@@ -199,7 +229,7 @@ def commentRaw2DB(data: list[dict], from_id: int = 0) -> tuple[tuple[int, list[d
             if from_id:
                 mapped['bid'] = from_id
             res.append(mapped)
-        id_ = 3
+        id_ = _MT.M_OBC_API
     elif data[0].get("scid"):
         # seiga
         for b in data:
@@ -207,11 +237,11 @@ def commentRaw2DB(data: list[dict], from_id: int = 0) -> tuple[tuple[int, list[d
             if from_id:
                 mapped['sid'] = from_id
             res.append(mapped)
-        id_ = 8
-    return (id_, res),
+        id_ = _MT.M_OSC_API
+    return _SQLBatch(id_, res),
 
 
-def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0) -> tuple[tuple[int, dict]]:
+def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0) -> tuple[_SQLBatch]:
     """映射getAll*Comments(...)和Comment的字段至对应的数据表。
     提供from_id: int以向表中存储评论所在的bid/vid/sid字段。"""
     if data.c_type == 'blog':
@@ -219,41 +249,40 @@ def comment2DB(data: Comment[Union[BlogEntry, VideoEntry]], from_id: int = 0) ->
         mapped = _process(d, _MT.OBC)  # 5
         if from_id:
             mapped['bid'] = from_id
-        id_ = 5
+        id_ = _MT.OBC
     elif data.c_type == 'video':
         d = asdict(data)
         mapped = _process(d, _MT.OVC)  # 6
         if from_id:
             mapped['vid'] = from_id
-        id_ = 6
+        id_ = _MT.OVC
     elif data.c_type == 'seiga':
         d = asdict(data)
         mapped = _process(d, _MT.OSC)  # 7
         if from_id:
             mapped['sid'] = from_id
-        id_ = 7
+        id_ = _MT.OSC
     else:
         raise ValueError(f'不支持的Comment.c_type类型: {data.c_type}')
-    return (id_, mapped),
+    return _SQLBatch(id_, mapped),
 
 
-def following2DB(data: list[dict], main_uid: int) -> tuple[tuple[int, list[tuple[int, int]]]]:
-    """映射关注的用户信息至数据表。需要提供main_uid (关注者uid)。返回((9, [uid, target_uid), ...]))。
+def following2DB(data: list[dict], main_uid: int) -> tuple[_SQLBatch]:
+    """映射关注的用户信息至数据表。需要提供main_uid (关注者uid)。
     data可以从ohutils.user_api.getAllFollowings(main_uid)获取。"""
     result = []
     for relation in data:
         result.append((main_uid, relation['uid']))
-    return (9, result),
+    return _SQLBatch(_MT.FOLLOW, result),
 
 
 @startEnd
-def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[
-    tuple[int, dict], tuple[int, list[dict]], tuple[int, list[dict]], tuple[int, list[dict]]]:
+def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[_SQLBatch, _SQLBatch,
+                                                                                     _SQLBatch, _SQLBatch]:
     """映射getSeigaDetail(...)的字段至数据表。
-    send_request: 是否发送请求以获取原始静画，默认为False(仅存储URL)。
-    返回((13, oh_seiga_v1), (14, oh_seiga_tag_v1), (15, oh_seiga_tagmap_v1), (16, oh_seiga_page_v1))。"""
+    send_request: 是否发送请求以获取原始静画，默认为False(仅存储URL)。"""
     sid = int(data['sid'])
-    mapped = _process(data, _MT.SEIGA)  # 13: SEIGA_API
+    mapped = _process(data, _MT.SEIGA)  # 13
     tag_dicts, tagmap_dicts, page_dicts = [], [], []
     for t in data['tags']:
         tid = int(t['tag_id'])
@@ -268,7 +297,37 @@ def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> t
         else:
             p_dict['original_url'] = p['original_url']
         page_dicts.append(p_dict)
-    return (13, mapped), (14, tag_dicts), (15, tagmap_dicts), (16, page_dicts)
+    return (_SQLBatch(_MT.SEIGA, mapped), _SQLBatch(_MT.SEIGA_TAG, tag_dicts),
+            _SQLBatch(_MT.SEIGA_TAGMAP, tagmap_dicts), _SQLBatch(_MT.SEIGA_PAGE, page_dicts))
+
+
+def collection2DB(data: dict) -> tuple[_SQLBatch]:
+    res = []
+    if 'blog_list' in data:
+        for b in data['blog_list']:
+            mapped = _process(b, _MT.BLOG_COLL)
+            mapped['arc_ts'] = int(time())  # 使用当前时间代替
+            mapped['name'] = data['collection']
+            res.append(mapped)
+        id_ = _MT.BLOG_COLL
+    elif 'video_list' in data:
+        for b in data['video_list']:
+            mapped = _process(b, _MT.VIDEO_COLL)
+            mapped['arc_ts'] = int(time())
+            mapped['name'] = data['collection']
+            res.append(mapped)
+        id_ = _MT.VIDEO_COLL
+    elif 'seiga_list' in data:
+        for b in data['seiga_list']:
+            mapped = _process(b, _MT.SEIGA_COLL)
+            mapped['arc_ts'] = int(time())
+            mapped['name'] = data['collection']
+            res.append(mapped)
+        id_ = _MT.SEIGA_COLL
+    else:
+        raise ValueError(f'不支持的collection类型')
+    return _SQLBatch(id_, res),
+
 
 
 def auto2DB(data, **kwargs):
@@ -295,6 +354,8 @@ def auto2DB(data, **kwargs):
             return user2DB(data, **kwargs)
         if 'sid' in data and 'description' in data:
             return seiga2DB(data, **kwargs)
+        if 'collection' in data:
+            return collection2DB(data)
     raise ValueError("无法识别数据类型")
 
 
@@ -309,7 +370,7 @@ def loadTable(sql_type: int, config: Config = None) -> sqlite3.Connection:
     return conn
 
 
-def _writeData(sql_type: int, data: dict, conn: sqlite3.Connection, no_update: bool = False):
+def _writeData(sql_type: _MT, data: dict, conn: sqlite3.Connection, no_update: bool = False):
     cur = conn.cursor()
     keys = data.keys()
     table_name, _, prim_key = _MAP[sql_type]
@@ -328,14 +389,14 @@ def _writeData(sql_type: int, data: dict, conn: sqlite3.Connection, no_update: b
     conn.commit()
 
 
-def writeSQL(batches: tuple[tuple[int, Any]], no_update: bool = False, config: Config = None):
-    """批量写入数据库。
-    batches格式: ((sql_type, sql_dict), ...)"""
+def writeSQL(batches: tuple[_SQLBatch], no_update: bool = False, config: Config = None):
+    """批量写入数据库。接收来自*2DB的值。"""
     if config is None:
         config = getGlobalConfig()
     conn = sqlite3.connect(os.path.join(config.indexPath, config.SQLName))
     cur = conn.cursor()
-    for sql_type, sql_dict in batches:
+    for sql_ in batches:
+        sql_type, sql_dict = sql_.sql_type, sql_.data
         if sql_type == 0:
             continue
         table_name, table_def, _ = _MAP[sql_type]
@@ -366,7 +427,7 @@ def readData(sql_type: int, conn: sqlite3.Connection, fields: list = None, **kwa
             kv.append(k + '=?')  # 无后缀
         else:
             if k_list[1] not in map_.keys():
-                map_[k_list[1]] = '__' + k_list[1]
+                map_[k_list[1]] = '__' + k_list[1]  # 若误分割，拼回来
             kv.append(k_list[0] + map_[k_list[1]] + '?')
     cond = ('WHERE ' if kwargs.keys() else '') + " AND ".join(kv)
     query = f"SELECT {fields_str} FROM {_MAP[sql_type][0]} {cond}"

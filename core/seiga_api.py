@@ -2,8 +2,9 @@ import random
 import time
 from .util import _request, startEnd, Comment, logger
 from .config import Config, getGlobalConfig
+from .exception import NotInCollectionError
 import os
-from typing import Literal
+from typing import Literal, Union
 
 
 @startEnd
@@ -91,14 +92,17 @@ def _getSeigaCommentList(sid: int, parent_scid=0, offset: int = 0, config: Confi
 
 
 @startEnd
-def getSeigaCollection(sid: int, config: Config = None) -> dict:
+def getSeigaCollection(sid: int, config: Config = None) -> Union[dict, None]:
     """获取指定sid所属的合集。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/seigas/{sid}/collection/"
-    res = _request('get', 'json', 'getSeigaCollection', url, config=config)
-    del res['status']
-    return res
+    try:
+        res = _request('get', 'json', 'getSeigaCollection', url, config=config)
+        del res['status']
+        return res
+    except NotInCollectionError:
+        return None
 
 
 @startEnd
