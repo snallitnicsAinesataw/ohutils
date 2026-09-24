@@ -19,9 +19,10 @@ def buildBlogIndex(config: Config = None):
         config = getGlobalConfig()
     index = {}
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+        fn = os.path.basename(path)
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadBlog(bid, config)
+            blog = loadBlog(bid, fn=fn, config=config)
             index[bid] = {
                 'bid': bid,
                 'uid': blog.uid,
@@ -48,8 +49,9 @@ def buildUserCommentIdx(config: Config = None):
     index = {}
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
+        fn = os.path.basename(path)
         try:
-            blog = loadBlog(bid, config)
+            blog = loadBlog(bid, fn=fn, config=config)
             for c in flattenComments(blog.comments):
                 uid = c.uid
                 index[uid] = index.get(uid, [])
@@ -80,8 +82,9 @@ def buildOBCCommentIdx(config: Config = None):
     index = {}
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
+        fn = os.path.basename(path)
         try:
-            blog = loadBlog(bid, config)
+            blog = loadBlog(bid, fn=fn, config=config)
             for c in flattenComments(blog.comments):
                 bcid = c.cid
                 index[bcid] = {
@@ -110,9 +113,10 @@ def buildAllIndexes(config: Config = None):
         config = getGlobalConfig()
     ob, c_obc, c_ou = {}, {}, {}
     for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+        fn = os.path.basename(path)
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
-            blog = loadBlog(bid, config)
+            blog = loadBlog(bid, fn=fn, config=config)
             # ob部分
             ob[bid] = {'bid': bid, 'uid': blog.uid, 'ts': blog.timestamp, 'arcts': blog.arc_time,
                        'c_len': len(blog.comments), 'ver': getVersion(path), 'size': os.path.getsize(path),

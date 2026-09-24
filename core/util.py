@@ -20,6 +20,8 @@ from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesErr
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 import logging
 from requests import Response
+from . import _const
+import string
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
@@ -52,7 +54,6 @@ class Danmaku:
 
     @classmethod
     def _from_dict(cls, d: dict):
-        """从字典导入。"""
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
         return cls(**filtered)
@@ -73,7 +74,7 @@ class BlogEntry:
     comments: List[Comment['BlogEntry']]
 
     blog_type: int = 0
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     copyright_type: int = 0
     is_gore: bool = False
     attached_vid: int = 0
@@ -107,7 +108,7 @@ class VideoEntry:
     comments: List[Comment['VideoEntry']]
 
     @classmethod
-    def fromDict(cls, d: dict):
+    def _from_dict(cls, d: dict):
         valid_keys = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in valid_keys}
         return cls(**filtered)
@@ -330,27 +331,6 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
     )
 
 
-def _mergeBlogData(old: BlogEntry, new: dict) -> dict:
-    """合并新旧数据，writeObarc的专用函数。
-    我服了。别用这个。"""
-    return {
-        'bid': int(new.get('bid', old.bid)),
-        'uid': int(new.get('uid', old.uid)),
-        'like_count': int(new.get('like_count', old.like_count)),
-        'favorite_count': int(new.get('favorite_count', old.favorite_count)),
-        'view_count': int(new.get('view_count', old.view_count)),
-        'channel_id': int(new.get('channel_id', old.channel_id)),
-        'time': new.get('time', "2000-1-1 00:00:00"),
-        'title': new.get('title', old.title),
-        'content': new.get('content', old.content),
-        'blog_type': int(new.get('blog_type', old.blog_type)),
-        'tags': list(set(old.tags + new.get('tags', []))),
-        'copyright_type': int(new.get('copyright_type', old.copyright_type)),
-        'is_gore': bool(new.get('is_gore', old.is_gore)),
-        'attached_vid': int(new.get('attached_vid', old.attached_vid))
-    }
-
-
 @contextmanager
 def appSim(config: Config = None):
     """模拟由STCaoMei(ou5558)开发的OTTOHub App。"""
@@ -400,3 +380,29 @@ def _recur_request(f_name: str, recur_func: Callable[[int], list[_T]],
         offset += limit
         time.sleep(random.uniform(*delay))  # 限速
     return all_
+
+
+def _format(pattern: str, **k):
+    return pattern.format(
+        bid=k.get('bid', 'ob0'), sid=k.get('sid', 0), vid=k.get('vid', 0), mid=k.get('mid', 0),
+        ext=k.get('ext', ''), ver=k.get('ver', '0'), toolver=_const._version,
+
+        # 请求后才可以知道的字段
+        uid=k.get('uid', 0),
+        page=k.get('page', 0),
+        dur=k.get('dur', 0),
+        durf=k.get('durf', '000000'),
+        pubftime=k.get('pubftime', _const._DEFAULT_FN_TIME),
+        pubts=k.get('pubts', _const.DEFAULT_TS),
+        # crc32='{crc32}',
+        # sha1='{sha1}',
+    )
+
+
+def _temp_name(pattern: str, ext: str) -> str:
+    rand = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    return f"{pattern}.{ext}.{rand}.ohu-temp"
+
+
+def _fn_formatTime(ts: int) -> str:
+    return datetime.fromtimestamp(ts).strftime("%Y%m%d_%H%M%S")

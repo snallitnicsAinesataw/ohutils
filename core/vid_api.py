@@ -121,13 +121,18 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
 
 
 @startEnd
+def _downloadVideo(vid: int, config: Config, stream: bool = True):
+    video = getVideoDetail(vid, config)
+    resp = _request('get', 'stream', 'downloadVideo', video['video_url'], config=config, stream=stream)
+    return resp
+
+
 def downloadVideo(vid: int, chunk_size: int = 8192, config: Config = None):
     """下载指定vid的视频。"""
     if config is None:
         config = getGlobalConfig()
     suffix = '.ohu-downloading'
-    video = getVideoDetail(vid, config)
-    resp = _request('get', 'stream', 'downloadVideo', video['video_url'], config=config, stream=True)
+    resp = _downloadVideo(vid, config, stream=True)
     fp = os.path.join(config.videoPath, config.videoName.format(vid=video['vid'], uid=video['uid']) + suffix)
     fp_new = fp
     with open(fp, "wb") as f:

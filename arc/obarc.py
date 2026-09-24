@@ -1,16 +1,19 @@
 import random
 import requests
 from ..core.config import Config, getGlobalConfig
-from ..core.util import Comment, BlogEntry, getVersion, APIError, _mergeBlogData, decrypt, genKey, logger
-from typing import List, Dict, Tuple, TypeVar
+from ..core.util import (
+    Comment, BlogEntry, getVersion, APIError, decrypt, genKey, logger, parseTime, formatTime,
+    _format, _fn_formatTime)
+from typing import List, Dict, Tuple, TypeVar, Optional
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
+from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER
 import struct
 import zlib
 import time
 import os
+import hashlib
 from datetime import datetime
-CURR_LATEST_OBARC_VER = 6
 _T = TypeVar('_T')
 
 
@@ -103,15 +106,14 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
         return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments), offset
 
 
-def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
+def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], fp: str, config: Config = None):
     """写入单个动态的.obarc文件。"""
     if config is None:
         config = getGlobalConfig()
 
-    filename = os.path.join(config.savePath, config.fileName.format(bid=bid))
-    with open(filename, "wb") as f:
-        # 文件头 (32字节)
-        pub_ts = int(datetime.strptime(blog_data.get("time", "2000-1-1 00:00:00"), "%Y-%m-%d %H:%M:%S").timestamp())
+    with open(fp, "wb") as f:
+        # ===================文件头 (32字节)===================
+        pub_ts = parseTime(blog_data["time"]) if blog_data.get("time") else DEFAULT_TS
         archive_ts = int(time.time())
         channel_id = blog_data.get("channel_id", 0)
         if version >= 4:
@@ -137,7 +139,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(struct.pack('<B', len(tags) if version >= 4 else 0))  # 1B 保留 / tag数量(仅v4)
         f.write(b'\xA5')  # 1B 头结尾
 
-        # 动态条目
+        # ===================动态条目===================
         title_bytes = blog_data.get("title", "").encode('utf-8')
         content_bytes = blog_data.get("content", "").encode('utf-8')
         f.write(struct.pack('<I', int(blog_data.get("bid", bid))))  # bid
@@ -186,12 +188,11 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         for comment in comments:
             write_comment(comment)
 
-        # 结尾标记
-        end_marker = bytes.fromhex("DC BD CC B2 A0 AD B9 B7 F0 A8 DC BF B5 C4 A8 E8 DC B7")
-        f.write(end_marker)
+        # ===================结尾标记===================
+        f.write(_OBARC_END_MARKER)
         file_size = f.tell()
 
-    with open(filename, "r+b") as f:
+    with open(fp, "r+b") as f:
         # CRC32和总大小回填
         f.seek(0x20)
         all_data = f.read()
@@ -206,13 +207,8 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(struct.pack('<I', crc32))
 
     if config.verbose:
-        logger.info(f"[_writeObarc/v{version}]Write complete: {filename}, CRC32: {crc32:08X}")
-    return filename
-
-
-def writeObarc(bid: int, blog_data: dict, comments: List[Comment], config: Config = None):
-    """写入单篇动态的.obarc文件，使用最新的.obarc版本。"""
-    return _writeObarc(CURR_LATEST_OBARC_VER, bid, blog_data, comments, config)
+        logger.info(f"[_writeObarc/v{version}]Write complete: {fp}, CRC32: {crc32:08X}")
+    return fp
 
 
 def mergeComments(old_list: List[Comment[_T]], new_list: List[Comment[_T]]) -> List[Comment[_T]]:
@@ -299,10 +295,8 @@ def verifyObarc(filepath: str):
         return True, "OK"
 
 
-def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
-    if config is None:
-        config = getGlobalConfig()
-    with open(os.path.join(config.savePath, config.fileName.format(bid=bid)), "rb") as f:
+def _loadObarc(version: int, fp: str) -> BlogEntry:
+    with open(fp, "rb") as f:
         header = f.read(32)
         # 提取channel_id (偏移0x1C, 2字节)
         if version >= 4:
@@ -319,13 +313,20 @@ def _loadObarc(version: int, bid: int, config: Config = None) -> BlogEntry:
     return blog
 
 
-def loadBlog(bid: int, config: Config = None) -> BlogEntry:
-    """从config.savePath中加载.obarc文件。"""
+def loadBlog(bid: int, fn: str = None, config: Config = None) -> BlogEntry:
+    """从config.savePath中加载.obarc文件。
+    若savePath中包含了除了{bid}之外的占位符，应提供完整文件名。此时bid参数被忽略。"""
     if config is None:
         config = getGlobalConfig()
-    filename = os.path.join(config.savePath, config.fileName.format(bid=bid))
-    ver = getVersion(filename)
-    return _loadObarc(ver, bid, config)
+    if fn is None:
+        try:
+            fn = config.fileName.format(bid=bid)
+        except KeyError as e:
+            raise ValueError(
+                f"fileName包含bid以外的占位符{e}") from e
+    filepath = os.path.join(config.savePath, fn)
+    ver = getVersion(filepath)
+    return _loadObarc(ver, filepath)
 
 
 def loadBlogBytes(f_bytes: bytes) -> BlogEntry:
@@ -341,61 +342,97 @@ def loadBlogBytes(f_bytes: bytes) -> BlogEntry:
     return blog
 
 
-def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[str, bool]:
-    """Override policy: keep(不动原存档), override(覆盖), merge(混合新数据与原数据) """
+def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optional[str], bool]:
     if config is None:
         config = getGlobalConfig()
 
-    file_name = config.fileName.format(bid=bid)
-    file_path = os.path.join(config.savePath, file_name)
     verbose = config.verbose
     policy = config.policy
 
-    if policy not in ['keep', 'merge', 'override']:
+    if policy not in ['keep', 'merge', 'override', 'keep_after']:
         raise ValueError
-    if os.path.exists(file_path):
-        if policy == 'keep':
+    if policy == 'keep':
+        if '{pubts}' in config.fileName or '{pubftime}' in config.fileName:
+            raise ValueError(
+                "keep策略仅支持{bid}、{ver}、{toolver}占位符，请用keep_after")
+        keep_fn = _format(config.fileName, bid='ob%i' % bid, ver=version) + '.obarc'
+        file_path = os.path.join(config.savePath, keep_fn)
+        if os.path.exists(file_path):
             if verbose:
-                logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, skip due to 'keep' policy\033[0m")
+                logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {keep_fn} already exist, skip due to 'keep' policy\033[0m")
             return file_path, False
 
+    # ===================获取动态正文===================
     if verbose:
         logger.info(f"[_archiveBlog/v{version}]Get bid ob{bid}...")
-    blog_data, comments = {}, []  # 默认值。在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
     try:
         blog_data = getBlogDetail(bid, config=config)
+        pub_ts = parseTime(blog_data["time"]) if blog_data.get("time") else DEFAULT_TS
+        fn = _format(
+            config.fileName,
+            bid='ob%i' % bid, uid=blog_data.get('uid', 0),
+            ver=version,
+            pubts=pub_ts,
+            pubftime=_fn_formatTime(pub_ts),
+        ) + '.obarc'
+        file_path = os.path.join(config.savePath, fn)
     except BIDError as e:
         logger.error(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
-    else:
-        time.sleep(random.uniform(*config.blogToCommentDelay))
-        if verbose:
-            logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
-        try:
-            comments = getAllBlogComments(bid, config=config)
-        except requests.RequestException as e:
-            logger.error(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
-            return file_path, True
-        if verbose:
-            logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
+        return None, True  # 在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
 
-    if not os.path.exists(file_path) or policy == 'override':
-        return _writeObarc(version, bid, blog_data, comments, config), True
+    # ===================获取评论===================
+    time.sleep(random.uniform(*config.blogToCommentDelay))
+    if verbose:
+        logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
+    try:
+        comments = getAllBlogComments(bid, config=config)
+    except requests.RequestException as e:
+        logger.error(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
+        return file_path, True
+    if verbose:
+        logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
+
+    # ===================写文件===================
+    exist = os.path.exists(file_path)
+    if not exist or policy == 'override':
+        return _writeObarc(version, bid, blog_data, comments, file_path, config=config), True
+
+    if policy == 'keep_after':
+        if verbose:
+            logger.info(
+                f"[_archiveBlog/v{version}]{config.colorYellow}File {fn} already exist, discard data due to 'keep_after' policy\033[0m")
+        return file_path, True
 
     if policy == 'merge':
         if verbose:
-            logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {file_name} already exist, start to merge due to 'merge' policy\033[0m")
+            logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {fn} already exist, start to merge due to 'merge' policy\033[0m")
 
-        ver = getVersion(os.path.join(config.savePath, config.fileName.format(bid=bid)))
-        old_blog = _loadObarc(ver, bid, config)
-        merged_blog = _mergeBlogData(old_blog, blog_data)
+        ver = getVersion(file_path)
+        old_blog = _loadObarc(ver, file_path)
+        # 内联的_mergeBlogData。
+        merged_blog = {
+                'bid': int(blog_data.get('bid', old_blog.bid)),
+                'uid': int(blog_data.get('uid', old_blog.uid)),
+                'like_count': int(blog_data.get('like_count', old_blog.like_count)),
+                'favorite_count': int(blog_data.get('favorite_count', old_blog.favorite_count)),
+                'view_count': int(blog_data.get('view_count', old_blog.view_count)),
+                'channel_id': int(blog_data.get('channel_id', old_blog.channel_id)),
+                'time': blog_data.get('time', "2000-1-1 00:00:00"),
+                'title': blog_data.get('title', old_blog.title),
+                'content': blog_data.get('content', old_blog.content),
+                'blog_type': int(blog_data.get('blog_type', old_blog.blog_type)),
+                'tags': list(set(old_blog.tags + blog_data.get('tags', []))),
+                'copyright_type': int(blog_data.get('copyright_type', old_blog.copyright_type)),
+                'is_gore': bool(blog_data.get('is_gore', old_blog.is_gore)),
+                'attached_vid': int(blog_data.get('attached_vid', old_blog.attached_vid))
+            }
         merged_comments = mergeComments(old_blog.comments, comments)
-        file_name = _writeObarc(version, bid, merged_blog, merged_comments, config)
+        file_name = _writeObarc(version, bid, merged_blog, merged_comments, file_path, config=config)
         if verbose:
             logger.info(f"[_archiveBlog/v{version}]File {file_name} merge complete")
     return file_path, True
 
 
 def saveBlog(bid: int, config: Config = None) -> Tuple[str, bool]:
-    """存储动态至.obarc文件。
-    config.policy: keep(不动原存档), override(覆盖), merge(混合新数据与原数据)"""
-    return _archiveBlog(CURR_LATEST_OBARC_VER, bid, config)
+    """存储动态至.obarc文件。"""
+    return _archiveBlog(_LATEST_OBARC_VER, bid, config)

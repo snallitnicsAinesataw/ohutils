@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, fields, replace
+from typing import Literal
 import yaml
 import os
 
@@ -58,9 +59,9 @@ class Config:
 
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
-    policy: str = 'merge'
-    fileName: str = "ob{bid}.obarc"
-    blobName: str = "ob*.obarc"
+    policy: Literal['merge', 'override', 'keep', 'keep_after'] = 'merge'
+    fileName: str = "ob{bid}"
+    blobName: str = "ob*"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
@@ -113,7 +114,7 @@ class Config:
         return cls(**data)
 
     def replace(self, **changes):
-        """临时替换配置。其实就是dataclasses.replace()。"""
+        """临时替换配置。"""
         rich_log = changes.pop('richLog', None)
         new_ = replace(self, **changes)
         if rich_log is not None:
