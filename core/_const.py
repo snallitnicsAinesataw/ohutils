@@ -44,3 +44,7 @@ MT_ALL = None  # 神秘API设计，media_type传中文
 _DEFAULT_FN_TIME = '20000101_000000'
 _OBARC_END_MARKER = b'\xDC\xBD\xCC\xB2\xA0\xAD\xB9\xB7\xF0\xA8\xDC\xBF\xB5\xC4\xA8\xE8\xDC\xB7'
 _LATEST_OBARC_VER = 6
+_RED = '\033[31m'
+_YELLOW = '\033[33m'
+_GRAY = '\033[90m'
+_CLEAR = '\033[0m'

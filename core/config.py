@@ -28,11 +28,6 @@ class Config:
     token: str = field(default_factory=str, repr=False)
     alwaysUseToken: bool = False
 
-    colorRed: str = field(default_factory=lambda: '\033[38;5;196m', repr=False, compare=False)
-    colorYellow: str = field(default_factory=lambda: '\033[38;2;244;177;2m', repr=False, compare=False)
-    colorGray: str = field(default_factory=lambda: '\033[38;5;240m', repr=False, compare=False)
-    _colorClear: str = field(default_factory=lambda: '\033[0m', repr=False, compare=False)
-
     timeout: int = 10
     uploadTimeout: int = 120
     retries: int = 3
@@ -89,8 +84,7 @@ class Config:
     retryDelay: tuple[float, float] = (0.7, 1.1)
     userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
-    __richLog: bool = field(default_factory=lambda: True, repr=False)
-    __orig_colors: tuple = field(default_factory=lambda: None, repr=False, compare=False)
+    richLog: bool = True
 
     @classmethod
     def fromDict(cls, d: dict):
@@ -114,28 +108,7 @@ class Config:
 
     def replace(self, **changes):
         """临时替换配置。"""
-        rich_log = changes.pop('richLog', None)
-        new_ = replace(self, **changes)
-        if rich_log is not None:
-            new_.richLog = rich_log
-        return new_
-
-    def _copy(self):
-        return replace(self)
-
-    @property
-    def richLog(self) -> bool:
-        return self.__richLog
-
-    @richLog.setter
-    def richLog(self, value: bool):
-        self.__richLog = value
-        if not value:
-            # 设置为False时，覆盖color*
-            self.__orig_colors = (self.colorRed, self.colorGray, self.colorYellow, self._colorClear)
-            self.colorRed = self.colorGray = self.colorYellow = self._colorClear = ''
-        else:
-            self.colorRed, self.colorGray, self.colorYellow, self._colorClear = self.__orig_colors
+        return replace(self, **changes)
 
 
 _DEFAULT_CONFIG = _IConfig()

@@ -1,7 +1,8 @@
-from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger
+from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger, _c
 from .config import Config, getGlobalConfig
 from typing import Literal, Union
 from .exception import ExhaustedRetriesError, NotInCollectionError
+from ._const import _RED
 import os
 
 
@@ -91,7 +92,8 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         try:
             comment_list = _getVideoCommentList(vid, parent_vcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllVideoComments]{config.colorRed}fail to get all comments: {e}")
+            t_ = f"fail to get all comments: {e}"
+            logger.error(f"[getAllVideoComments]{_c(_RED, t_, config)}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?

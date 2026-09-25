@@ -150,7 +150,8 @@ def startEnd(func_=None, *, is_auth: bool = False):
                 if config.verbose:
                     args_str = ', '.join([f"{k}={v}" for k, v in params.items()]).replace('\n', '\\n')
                     cutted = args_str[:25]
-                    logger.debug(f"[{func.__name__}]start {config.colorGray}with args {cutted}{'...' if cutted != args_str else ''}\033[0m")
+                    t_ = f"with args {cutted}{'...' if cutted != args_str else ''}"
+                    logger.debug(f"[{func.__name__}]start {_c(_const._GRAY, t_, config)}")
                 else:
                     logger.debug(f"[{func.__name__}]start")
                 try:
@@ -158,14 +159,16 @@ def startEnd(func_=None, *, is_auth: bool = False):
                     if config.verbose:
                         result_str = str(result).replace('\n', '\\n')
                         cutted = result_str[:25]
-                        logger.debug(f"[{func.__name__}]end {config.colorGray}with return {cutted}{'...' if result_str != cutted else ''}\033[0m")
+                        t_ = f"with return {cutted}{'...' if result_str != cutted else ''}"
+                        logger.debug(f"[{func.__name__}]end {_c(_const._GRAY, t_, config)}")
                     else:
                         logger.debug(f"[{func.__name__}]end")
                     return result
                 except Exception:
                     if config.verbose:
                         exc_type, exc_value, _ = sys.exc_info()
-                        logger.debug(f"[{func.__name__}]end {config.colorRed}with exception {exc_type.__name__}({exc_value}{config.colorRed})\033[0m")
+                        t_ = f"with exception {exc_type.__name__}({exc_value})"
+                        logger.debug(f"[{func.__name__}]end {_c(_const._RED, t_, config)}")
                     raise
         return wrapper
 
@@ -250,7 +253,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 new_query = urlencode(query, doseq=True)
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
-                logger.info(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
+                logger.info(f"[{f_name}]{method} {_c(_const._GRAY, url.split('token=')[0].strip('&?'), config)}")
 
             headers = dict(config.headers)
             headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.8.0'  # 水印，大概
@@ -290,17 +293,19 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                     raise mappings.get(msg, APIError)(msg)
             except ValueError:
                 # 如果响应不是JSON
-                raise APIError(f"[{f_name}]{config.colorRed}{e.response.status_code} error: {e.response.text}")
+                t_ = f"{e.response.status_code} error: {e.response.text}"
+                raise APIError(f"[{f_name}]{_c(_const._RED, t_, config)}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
-                raise ExhaustedRetriesError(
-                    f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
-                    f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
-            logger.warning(f"[{f_name}]{config.colorYellow}Retry {attempt + 1}/{retries}: {e}\033[0m")
+                t_ = f"Retries({retries}) exhausted while requesting {url.split('token=')[0].strip('&?')}"
+                raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
+
+            t_ = f"Retry {attempt + 1}/{retries}: {e}"
+            logger.warning(f"[{f_name}]{_c(_const._YELLOW, t_, config)}")
             time.sleep(random.uniform(*config.retryDelay))
-    raise ExhaustedRetriesError(
-        f"[{f_name}]{config.colorRed}Retries({retries}) exhausted "
-        f"while requesting {url.split('token=')[0].strip('&?')}\033[0m")
+
+    t_ = f"Retries({retries}) exhausted while requesting {url.split('token=')[0].strip('&?')}"
+    raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
 
 
 def flattenComments(recur_list: list[Comment]) -> list[Comment]:
@@ -413,3 +418,7 @@ def _temp_name(pattern: str, ext: str) -> str:
 
 def _fn_formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y%m%d_%H%M%S")
+
+
+def _c(color: str, str_: str, c: Config):
+    return color + str_ + _const._CLEAR if c.richLog else str_

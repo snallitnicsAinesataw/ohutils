@@ -1,5 +1,6 @@
-from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey, logger
+from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey, logger, _c
 from ..core.config import Config, getGlobalConfig
+from ..core._const import _YELLOW
 import zlib
 import struct
 from .obarc import _parseBlog
@@ -15,7 +16,7 @@ class BlogChunk:
         self._cache = {}  # {bid:int -> BlogEntry}
         self._start = start
         self._end = end
-        self._cfg = config
+        self._config = config
         self._bias = bias
         self._flags = flags
         self._encrypt = flags & 1
@@ -31,7 +32,8 @@ class BlogChunk:
                 try:
                     offset = struct.unpack('<Q', f.read(8))[0]
                 except Exception as e:
-                    logger.warning(f"[BlogChunk/load]failed to read offset for bid={bid}: {e}\033[0m")
+                    t_ = f"failed to read offset for bid={bid}: {e}"
+                    logger.warning(f"[BlogChunk/load]{_c(_YELLOW, t_, self._config)}")
                     continue
                 if offset == 0:
                     continue
@@ -162,7 +164,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         file = os.path.join(config.savePath, config.fileName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
-            logger.warning(f'[buildChunk]{config.colorYellow}File does not exist: {file}\033[0m')
+            logger.warning('[buildChunk]' + _c(_YELLOW, 'File does not exist: {file}', config))
             continue
         try:
             data = serializeBlog(bid)

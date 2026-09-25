@@ -3,11 +3,11 @@ import requests
 from ..core.config import Config, getGlobalConfig
 from ..core.util import (
     Comment, BlogEntry, getVersion, APIError, decrypt, genKey, logger, parseTime, formatTime,
-    _format, _fn_formatTime)
+    _format, _fn_formatTime, _c)
 from typing import List, Dict, Tuple, TypeVar, Optional
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
-from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER
+from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED
 import struct
 import zlib
 import time
@@ -290,7 +290,7 @@ def verifyObarc(filepath: str):
         actual_size = f.tell()
         if actual_size != stored_size:
             return False, f"wrong size: stored {stored_size}, actual {actual_size}"
-        if not data.endswith(bytes.fromhex("DCBDCCB2A0ADB9B7F0A8DCBFB5C4A8E8DCB7")):
+        if not data.endswith(_OBARC_END_MARKER):
             return False, f"wrong file end marker"
         return True, "OK"
 
@@ -360,7 +360,8 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
         file_path = os.path.join(config.savePath, keep_fn)
         if os.path.exists(file_path):
             if verbose:
-                logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {keep_fn} already exist, skip due to 'keep' policy\033[0m")
+                t_ = f"File {keep_fn} already exist, skip due to 'keep' policy"
+                logger.info(f"[_archiveBlog/v{version}]{_c(_YELLOW, t_, config)}")
             return file_path, False
 
     # ===================获取动态正文===================
@@ -378,7 +379,8 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
         ) + '.obarc'
         file_path = os.path.join(config.savePath, fn)
     except BIDError as e:
-        logger.error(f"[_archiveBlog/v{version}]{config.colorRed}Blog ob{bid} content get failed: {e}\033[0m")
+        t_ = f"Blog ob{bid} content get failed: {e}"
+        logger.error(f"[_archiveBlog/v{version}]{_c(_RED, t_, config)}")
         return None, True  # 在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
 
     # ===================获取评论===================
@@ -388,7 +390,8 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
     try:
         comments = getAllBlogComments(bid, config=config)
     except requests.RequestException as e:
-        logger.error(f'[_archiveBlog/v{version}]{config.colorRed}Network error: {e}\033[0m')
+        t_ = f"Network error: {e}"
+        logger.error(f'[_archiveBlog/v{version}]{_c(_RED, t_, config)}')
         return file_path, True
     if verbose:
         logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
@@ -400,13 +403,15 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
 
     if policy == 'keep_after':
         if verbose:
+            t_ = f"File {fn} already exist, discard data due to 'keep_after' policy"
             logger.info(
-                f"[_archiveBlog/v{version}]{config.colorYellow}File {fn} already exist, discard data due to 'keep_after' policy\033[0m")
+                f"[_archiveBlog/v{version}]{_c(_YELLOW, t_, config)}")
         return file_path, True
 
     if policy == 'merge':
+        t_ = f"File {fn} already exist, start to merge due to 'merge' policy"
         if verbose:
-            logger.info(f"[_archiveBlog/v{version}]{config.colorYellow}File {fn} already exist, start to merge due to 'merge' policy\033[0m")
+            logger.info(f"[_archiveBlog/v{version}]{_c(_YELLOW, t_, config)}")
 
         ver = getVersion(file_path)
         old_blog = _loadObarc(ver, file_path)

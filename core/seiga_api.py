@@ -3,6 +3,7 @@ import time
 from .util import _request, startEnd, Comment, logger
 from .config import Config, getGlobalConfig
 from .exception import NotInCollectionError
+from ._const import _RED
 import os
 from typing import Literal, Union
 
@@ -117,7 +118,8 @@ def getAllSeigaComments(sid: int, parent_scid: int = 0, config: Config = None) -
         try:
             comment_list = _getSeigaCommentList(sid, parent_scid, offset, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllSeigaComments]{config.colorRed}fail to get all comments: {e}")
+            t_ = f"fail to get all comments: {e}"
+            logger.error(f"[getAllSeigaComments]{_c(_RED, t_, config)}")
             return []  # 过于激进?
         if not comment_list:
             return []  # 过于激进?

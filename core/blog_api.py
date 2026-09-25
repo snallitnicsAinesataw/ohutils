@@ -1,9 +1,10 @@
-from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request, logger
+from .util import startEnd, Comment, parseTime, _request, APIError, _recur_request, logger, _c
 from .exception import ExhaustedRetriesError, NotInCollectionError
 from .config import Config, getGlobalConfig
 import requests
 import time
 from typing import List, Union
+from ._const import _RED
 import random
 
 
@@ -53,7 +54,8 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
         try:
             comment_list = _getBlogCommentList(bid, parent_bcid, offset, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllBlogComments]{config.colorRed}fail to get all comments: {e}")
+            t_ = f"fail to get all comments: {e}"
+            logger.error(f"[getAllBlogComments]{_c(_RED, t_, config)}")
             return []  # 过于激进?
 
         if not comment_list:
@@ -146,13 +148,13 @@ def getManageBlogs(offset: int = 0, config: Config = None) -> dict:
 
 
 @startEnd
-def getFavBlogs(offset: int = 0, config: Config = None) -> dict:
+def _getFavBlogs(offset: int = 0, config: Config = None) -> dict:
     """获取一组收藏的动态(不递归)。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
           f"&_t={int(time.time())}&token={config.token}"
-    return _request('get', 'json', "getFavBlogs", url, config=config)
+    return _request('get', 'json', "_getFavBlogs", url, config=config)
 
 
 @startEnd
@@ -166,9 +168,10 @@ def getAllFavBlogs(return_dict: bool = False, config: Config = None) -> Union[li
         if offset != 0 and config.verbose:
             logger.info(f"[getAllFavBlogs]curr offset: {offset}")
         try:
-            data = getFavBlogs(offset, config)
+            data = _getFavBlogs(offset, config)
         except ExhaustedRetriesError as e:
-            logger.error(f"[getAllFavBlogs]{config.colorRed}fail to get all favorite blogs: {e}")
+            t_ = f"fail to get all favorite blogs: {e}"
+            logger.error(f"[getAllFavBlogs]{_c(_RED, t_, config)}")
             return []
         blog_list = data['data'].get("blog_list", [])
         if not blog_list:

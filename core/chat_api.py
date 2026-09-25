@@ -2,9 +2,10 @@ import json
 import threading
 import time
 from threading import Thread
-from .util import startEnd, _request, logger
+from .util import startEnd, _request, logger, _c
 from .config import Config, getGlobalConfig
 import websocket
+from ._const import _YELLOW, _GRAY, _RED
 from typing import Optional, Callable, Any, Union, Tuple
 
 
@@ -71,7 +72,7 @@ class ChatClient(websocket.WebSocketApp):
                 time.sleep(self._beat_interval)
                 if self._pinged:
                     logger.error(
-                        f'[ChatClient/heartbeat]{self._config.colorYellow}did not receive pong after ping\033[0m')
+                        f'[ChatClient/heartbeat]{_c(_YELLOW,"did not receive pong after ping",self._config)}')
                 if self.sock and self.sock.connected:
                     self._pinged = True
                     self.send(json.dumps({'type': 'ping'}))  # 发送心跳包
@@ -86,8 +87,8 @@ class ChatClient(websocket.WebSocketApp):
         type_ = data.get('type')
         if type_ == 'pong':
             if not self._pinged:
-                logger.warning('[ChatClient/heartbeat]'
-                               f"{self._config.colorYellow}receive pong without ping. This shouldn't happen.\033[0m")
+                logger.warning('[ChatClient/heartbeat]' + \
+                               _c(_YELLOW, "receive pong without ping. This shouldn't happen.", self._config))
             self._pinged = False
         elif type_ == 'welcome':
             if self._user_on_welcome:
@@ -108,8 +109,8 @@ class ChatClient(websocket.WebSocketApp):
             if self._user_on_online_change:
                 self._user_on_online_change(ws, data)
             elif self._config.verbose:
-                logger.info('[ChatClient/msg:online]'
-                            f'{self._config.colorGray}Online count:{data["count"]} @{round(time.time(), 3)}\033[0m')
+                t_ = f'Online count:{data["count"]} @{round(time.time(), 3)}'
+                logger.info('[ChatClient/msg:online]'+_c(_GRAY, t_, self._config))
         elif type_ == 'message':
             if self._user_on_chat:
                 self._user_on_chat(ws, data)
@@ -126,7 +127,7 @@ class ChatClient(websocket.WebSocketApp):
         if self._user_on_error:
             self._user_on_error(ws, e)
         else:
-            logger.error(f'[ChatClient/error]{self._config.colorRed}{e}\033[0m')
+            logger.error(f'[ChatClient/error]{_c(_RED, e, self._config)}')
 
     def _on_close(self, ws, code, msg):
         if self._user_on_close:
@@ -146,7 +147,7 @@ class ChatClient(websocket.WebSocketApp):
         if self._user_on_reconnect:
             self._user_on_reconnect(ws)
         elif self._config.verbose:
-            logger.info(f'[ChatClient/reconnect]{self._config.colorYellow}reconnect triggered\033[0m')
+            logger.info(f'[ChatClient/reconnect]{_c(_YELLOW, "reconnect triggered", self._config)}')
 
     def stop(self):
         """停止心跳并关闭连接。"""
