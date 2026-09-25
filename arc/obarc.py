@@ -296,6 +296,7 @@ def verifyObarc(filepath: str):
 
 
 def _loadObarc(version: int, fp: str) -> BlogEntry:
+    flags, tag_count = 0, 0
     with open(fp, "rb") as f:
         header = f.read(32)
         # 提取channel_id (偏移0x1C, 2字节)
@@ -320,7 +321,7 @@ def loadBlog(bid: int, fn: str = None, config: Config = None) -> BlogEntry:
         config = getGlobalConfig()
     if fn is None:
         try:
-            fn = config.fileName.format(bid=bid)
+            fn = _format(config.fileName, bid="ob%i" % bid) + '.obarc'
         except KeyError as e:
             raise ValueError(
                 f"fileName包含bid以外的占位符{e}") from e

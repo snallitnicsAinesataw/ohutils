@@ -13,7 +13,7 @@ def _tag_factory(tags: list[str]) -> str:
         tags.remove('吉吉国民')
     except ValueError:
         pass
-    return ','.join(tags)
+    return ''.join('#' + t for t in tags)
 
 
 class _MT(IntEnum):
@@ -40,6 +40,7 @@ class _MT(IntEnum):
     CHANNEL = 19
     CHANNEL_SECTION = 20
     CHANNEL_NOTICE = 21
+    VIDEO_STAFF = 22
 
 
 @dataclass(frozen=True)
@@ -53,10 +54,7 @@ class _SQLBatch:
 _MAP = {
     _MT.USER: ('oh_user_v1', '''uid INTEGER PRIMARY KEY NOT NULL, name TEXT, intro TEXT, create_ts INTEGER,
         sex TEXT, honour TEXT, exp INTEGER, avatar BLOB, cover_h BLOB, cover_v BLOB, video INTEGER, blog INTEGER,
-        seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER, avatar_url TEXT, cover_h_url TEXT, cover_v_url TEXT,
-        CHECK (((avatar IS NULL AND avatar_url IS NOT NULL) OR (avatar IS NOT NULL AND avatar_url IS NULL)) AND 
-        ((cover_h IS NULL AND cover_h_url IS NOT NULL) OR (cover_h IS NOT NULL AND cover_h_url IS NULL)) AND 
-        ((cover_v IS NULL AND cover_v_url IS NOT NULL) OR (cover_v IS NOT NULL AND cover_v_url IS NULL)))''', 'uid'),
+        seiga INTEGER, media INTEGER, follow INTEGER, fan INTEGER''', 'uid'),
     _MT.BLOG: ('oh_blog_v1', '''bid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, pub_ts INTEGER, arc_ts INTEGER,
         channel INTEGER, like INTEGER, fav INTEGER, view INTEGER, attached_vid INTEGER, copyright_type INTEGER,
         blog_type INTEGER, comment_count INTEGER, title TEXT, content TEXT, tags TEXT, gore INTEGER, forward_bid INTEGER,
@@ -88,10 +86,9 @@ _MAP = {
         ((original IS NULL AND original_url IS NOT NULL) OR (original IS NOT NULL AND original_url IS NULL))''', 'sid'),
     _MT.VIDEO: ('oh_video_v1', '''vid INTEGER PRIMARY KEY NOT NULL, uid INTEGER, title TEXT, intro TEXT, vid_type INTEGER, 
         category INTEGER, channel_id INTEGER, tags TEXT, pub_ts INTEGER, like INTEGER, fav INTEGER, view INTEGER,
-        comment INTEGER, cover_url TEXT, cover BLOB, video_url TEXT, video_local TEXT, video_m3u8_url TEXT,
-        audio_url TEXT, dur INTEGER, arc_ts INTEGER, CHECK (((video_url IS NULL AND video_local IS NOT NULL) OR 
-        (video_url IS NOT NULL AND video_local IS NULL)) AND ((cover IS NULL AND cover_url IS NOT NULL) OR 
-        (cover IS NOT NULL AND cover_url IS NULL)))''', 'vid'),
+        comment INTEGER, cover BLOB, video_url TEXT, video_local TEXT, video_m3u8_url TEXT, audio_url TEXT, dur INTEGER,
+        arc_ts INTEGER, gore INTEGER, CHECK ((video_url IS NULL AND video_local IS NOT NULL) OR 
+        (video_url IS NOT NULL AND video_local IS NULL))''', 'vid'),
     _MT.MEDIA: ('oh_media_v1', '''m_id INTEGER PRIMARY KEY NOT NULL, uid INTEGER, ext TEXT, title TEXT, description TEXT, 
         tags TEXT, orig_source TEXT, media_type TEXT, copyright_type INTEGER, file_size INTEGER, pub_ts INTEGER, 
         file_url TEXT, file_local TEXT, fav INTEGER, arc_ts INTEGER, CHECK((file_url IS NULL AND file_local IS NOT NULL) 
@@ -100,13 +97,15 @@ _MAP = {
         cover_url TEXT, creator_uid INTEGER, owner_uid INTEGER, admin_uid_list TEXT, join_permission INTEGER, 
         open_post INTEGER, member INTEGER, follower INTEGER, create_ts INTEGER, update_ts INTEGER, arc_ts INTEGER,
         CHECK ((cover_url IS NULL AND cover IS NOT NULL) OR (cover_url IS NOT NULL AND cover IS NULL))''', 'cid'),
-    _MT.CHANNEL_SECTION: ('oh_channel_section_v1', '''cid INTEGER, section_id INTEGER, name TEXT, description TEXT, icon_url TEXT, 
+    _MT.CHANNEL_SECTION: ('oh_channel_section_v1', '''cid INTEGER, section_id INTEGER, name TEXT, description TEXT,
         icon BLOB, sort_order INTEGER, creator_uid INTEGER, create_ts INTEGER, update_ts INTEGER, arc_ts INTEGER,
-        is_deleted INTEGER, video INTEGER, blog INTEGER, total INTEGER, PRIMARY KEY (cid, section_id), CHECK (
-        (icon_url IS NULL AND icon IS NOT NULL) OR (icon_url IS NOT NULL AND icon IS NULL))''', '(cid, section_id)'),
+        is_deleted INTEGER, video INTEGER, blog INTEGER, total INTEGER, PRIMARY KEY (cid, section_id)''',
+                          '(cid, section_id)'),
     _MT.CHANNEL_NOTICE: ('oh_channel_notice_v1', '''cid INTEGER, notice_id INTEGER, title TEXT, content TEXT, sort_order INTEGER,
         creator_uid INTEGER, create_ts INTEGER, update_ts INTEGER, arc_ts INTEGER, is_deleted INTEGER, 
         PRIMARY KEY (cid, notice_id)''', '(cid, notice_id)'),
+    _MT.VIDEO_STAFF: ('oh_video_staff_v1', '''vid INTEGER NOT NULL, uid INTEGER NOT NULL, role TEXT, sort_order INTEGER, 
+    PRIMARY KEY (vid, uid)''', '(vid, uid)'),
 }
 ##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
@@ -153,12 +152,40 @@ _MAP_BLOG_COLL_API = {'bid': ('bid', int), 'uid': ('uid', int), 'collection_sort
 _MAP_VIDEO_COLL_API = {'vid': ('vid', int), 'uid': ('uid', int), 'collection_sort_order': ('sort_order', int)}
 _MAP_SEIGA_COLL_API = {'sid': ('sid', int), 'uid': ('uid', int), 'collection_sort_order': ('sort_order', int)}
 # _MT.SEIGA_PAGE, _MT.SEIGA_TAG, _MT.SEIGA_TAGMAP不需要map。
+# _MAP_VIDEO_API特殊处理video_local, staff, video_url, arc_ts。
+_MAP_VIDEO_API = {'vid': ('vid', int), 'uid': ('uid', int), 'title': ('title', None), 'intro': ('intro', None),
+                  'type': ('vid_type', int), 'category': ('category', int), 'channel_id': ('channel_id', int),
+                  'tag': ('tags', None), 'time': ('pub_ts', parseTime), 'like_count': ('like', int),
+                  'favorite_count': ('fav', int), 'view_count': ('view', int), 'comment_count': ('comment', int),
+                  'duration': ('dur', int), 'audio_url': ('audio_url', None), 'is_gore': ('gore', int),
+                  'video_m3u8_url': ('video_m3u8_url', None)}
+# _MAP_MEDIA_API特殊处理file_local, file_url, arc_ts
+_MAP_MEDIA_API = {'media_id': ('m_id', int), 'uid': ('uid', int), 'extension': ('ext', None),
+                  'title': ('title', None), 'intro': ('description', None), 'tag': ('tags', None),
+                  'original_source': ('orig_source', None), 'media_type': ('media_type', None),
+                  'copyright_type': ('copyright_type', int), 'file_size': ('file_size', int),
+                  'pub_ts': ('created_at', parseTime), 'favorite_count': ('fav', int)}
+# _MAP_MEDIA_API特殊处理cover, cover_url, arc_ts
+_MAP_CHANNEL_API = {'channel_id': ('cid', int), 'channel_name': ('name', None), 'channel_title': ('title', None),
+                    'description': ('description', None), 'creator_uid': ('creator_uid', int),
+                    'owner_uid': ('owner_uid', int), 'admin_uids': ('admin_uid_list', lambda x: ','.join(x)),
+                    'join_permission': ('join_permission', int), 'open_post': ('open_post', int),
+                    'member_count': ('member', None), 'follower_count': ('follower', int),
+                    'created_at': ('create_ts', parseTime), 'updated_at': ('update_ts', parseTime)}
+# _MAP_MEDIA_API特殊处理icon, arc_ts, video, blog, total
+_MAP_C_SECTION = {'channel_id': ('cid', int), 'channel_section_id': ('section_id', int), 'section_name': ('name', None),
+                  'description': ('description', None), 'sort_order': ('sort_order', int),
+                  'creator_uid': ('creator_uid', int), 'created_at': ('create_ts', parseTime),
+                  'updated_at': ('update_ts', parseTime), 'is_deleted': ('is_deleted', int)}
+_MAP_C_NOTICE = {'channel_id': ('cid', int), 'notice_id': ('notice_id', int), 'title': ('title', None),
+                 'content': ('content', None), 'sort_order': ('sort_order', int),
+                 'creator_uid': ('creator_uid', int), 'created_at': ('create_ts', parseTime),
+                 'updated_at': ('update_ts', parseTime), 'is_deleted': ('is_deleted', int)}
 #########################################################################################
 # map_type: int -> map: dict
 # sql_type集合是map_type集合的真子集。
 # 未做map：
-# (17, 'oh_video_v1'),
-# (18, 'oh_media_v1'), (19, 'oh_channel_v1'), (20, 'oh_channel_section_v1'), (21, 'oh_channel_notice_v1')]
+# (19, 'oh_channel_v1'), (20, 'oh_channel_section_v1'), (21, 'oh_channel_notice_v1')]
 # 各种2DB返回的是sql_type不是map_type。
 # 我服了我自己了，写出来一个奇丑的tuple[tuple[int, dict], tuple[int, list[dict]], tuple[int, list[dict]], tuple[int, list[dict]]]。
 # 最后还是改了。
@@ -168,7 +195,12 @@ _META_MAP = {
     _MT.OBC: _MAP_OBC, _MT.OVC: _MAP_OVC, _MT.OSC: _MAP_OSC, _MT.M_OSC_API: _MAP_OSC_API,
     _MT.BLOG_COLL: _MAP_BLOG_COLL_API, _MT.VIDEO_COLL: _MAP_VIDEO_COLL_API, _MT.SEIGA_COLL: _MAP_SEIGA_COLL_API,
     _MT.SEIGA: _MAP_SEIGA_API,
+    _MT.VIDEO: _MAP_VIDEO_API,
+    _MT.MEDIA: _MAP_MEDIA_API,
+    _MT.CHANNEL: _MAP_CHANNEL_API, _MT.CHANNEL_NOTICE: _MAP_C_NOTICE, _MT.CHANNEL_SECTION: _MAP_C_SECTION,
 }
+
+
 #########################################################################################
 
 
@@ -184,20 +216,15 @@ def _process(data: dict, sql_type: _MT) -> dict:
 
 
 @startEnd
-def user2DB(data: dict, send_request: bool = True, config: Config = None) -> tuple[_SQLBatch]:
-    """映射getUserDetail(...)的字段至oh_user，附处理。
-    send_request: 是否发送请求以获取用户头像和封面，默认为True。"""
+def user2DB(data: dict, config: Config = None) -> tuple[_SQLBatch]:
+    """映射getUserDetail(...)的字段至oh_user，附处理。"""
     if config is None:
         config = getGlobalConfig()
     mapped = _process(data, _MT.USER)  # 1
     mapped['arc_ts'] = int(time())  # 使用当前时间代替
-    if send_request:
-        mapped['avatar'] = _request('get', 'content', 'user2DB', data['avatar_url'], config=config)
-        mapped['cover_h'] = _request('get', 'content', 'user2DB', data['cover_h_url'], config=config)
-        mapped['cover_v'] = _request('get', 'content', 'user2DB', data['cover_v_url'], config=config)
-    else:
-        mapped['avatar_url'] = mapped['avatar_url']
-        mapped['cover_h_url'], mapped['cover_v_url'] = data['cover_h_url'], data['cover_v_url']
+    mapped['avatar'] = _request('get', 'content', 'user2DB', data['avatar_url'], config=config)
+    mapped['cover_h'] = _request('get', 'content', 'user2DB', data['cover_h_url'], config=config)
+    mapped['cover_v'] = _request('get', 'content', 'user2DB', data['cover_v_url'], config=config)
     return _SQLBatch(_MT.USER, mapped),
 
 
@@ -277,10 +304,8 @@ def following2DB(data: list[dict], main_uid: int) -> tuple[_SQLBatch]:
 
 
 @startEnd
-def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> tuple[_SQLBatch, _SQLBatch,
-                                                                                     _SQLBatch, _SQLBatch]:
-    """映射getSeigaDetail(...)的字段至数据表。
-    send_request: 是否发送请求以获取原始静画，默认为False(仅存储URL)。"""
+def seiga2DB(data: dict, config: Config = None) -> tuple[_SQLBatch, _SQLBatch, _SQLBatch, _SQLBatch]:
+    """映射getSeigaDetail(...)的字段至数据表。"""
     sid = int(data['sid'])
     mapped = _process(data, _MT.SEIGA)  # 13
     tag_dicts, tagmap_dicts, page_dicts = [], [], []
@@ -291,11 +316,8 @@ def seiga2DB(data: dict, send_request: bool = False, config: Config = None) -> t
                              'lock_sort': t['lock_sort'], 'added_by': int(t['added_by_uid'])})
     for p in data['pages']:
         p_dict = {'sid': sid, 'page_no': int(p['page_no']), 'asset_id': int(p['image_asset_id']),
-                  'width': int(p['width']), 'height': int(p['height']), 'is_animated': p['is_animated']}
-        if send_request:
-            p_dict['original'] = _request('get', 'content', 'seiga2DB', data['original_url'], config=config)
-        else:
-            p_dict['original_url'] = p['original_url']
+                  'width': int(p['width']), 'height': int(p['height']), 'is_animated': p['is_animated'],
+                  'original': _request('get', 'content', 'seiga2DB', data['original_url'], config=config)}
         page_dicts.append(p_dict)
     return (_SQLBatch(_MT.SEIGA, mapped), _SQLBatch(_MT.SEIGA_TAG, tag_dicts),
             _SQLBatch(_MT.SEIGA_TAGMAP, tagmap_dicts), _SQLBatch(_MT.SEIGA_PAGE, page_dicts))
@@ -329,20 +351,72 @@ def collection2DB(data: dict) -> tuple[_SQLBatch]:
     return _SQLBatch(id_, res),
 
 
+def video2DB(data, video_local: str = None, config: Config = None) -> tuple[_SQLBatch, _SQLBatch]:
+    mapped = _process(data, _MT.VIDEO)
+    mapped['arc_ts'] = int(time())
+    if video_local is None:
+        mapped['video_url'] = data['video_url']
+    else:
+        mapped['video_local'] = video_local
+    mapped['cover'] = _request('get', 'content', 'video2DB', data['cover_url'], config=config)
+
+    staffs = []
+    for s in data['staff']:
+        staffs.append({'vid': data['vid'], 'uid': s['uid'], 'role': s['role'], 'sort_order': int(s['sort_order'])})
+    return _SQLBatch(_MT.VIDEO, mapped), _SQLBatch(_MT.VIDEO_STAFF, staffs)
+
+
+def media2DB(data, file_local: str = None) -> tuple[_SQLBatch]:
+    mapped = _process(data, _MT.MEDIA)
+    mapped['arc_ts'] = int(time())
+    if file_local is None:
+        mapped['file_url'] = data['file_url']
+    else:
+        mapped['file_local'] = file_local
+    return _SQLBatch(_MT.MEDIA, mapped),
+
+
+def channel2DB(data, send_request: bool = True, config: Config = None) -> tuple[_SQLBatch]:
+    mapped = _process(data, _MT.CHANNEL)
+    mapped['arc_ts'] = int(time())
+    if send_request:
+        mapped['cover'] = _request('get', 'content', 'channel2DB', data['cover_url'], config=config)
+    else:
+        mapped['cover_url'] = data['cover_url']
+    return _SQLBatch(_MT.CHANNEL, mapped),
+
+
+def channelSection2DB(data, config: Config = None) -> tuple[_SQLBatch]:
+    mapped = _process(data, _MT.CHANNEL_SECTION)
+    mapped['arc_ts'] = int(time())
+    t_ = data['content_count']
+    mapped['video'], mapped['blog'], mapped['total'] = t_['video_count'], t_['blog_count'], t_['total_count']
+    if not data['icon_url']:
+        mapped['icon'] = _request('get', 'content', 'channelSection2DB', data['icon_url'], config=config)
+    return _SQLBatch(_MT.CHANNEL_SECTION, mapped),
+
+
+def channelNotice2DB(data) -> tuple[_SQLBatch]:
+    mapped = _process(data, _MT.CHANNEL_NOTICE)
+    mapped['arc_ts'] = int(time())
+    return _SQLBatch(_MT.CHANNEL_NOTICE, mapped),
+
 
 def auto2DB(data, **kwargs):
     """自动判断类型并映射字段。
     main_uid: (仅following)关注者uid。
     from_id: (可选，仅Comment)评论所在的bid/vid/sid字段。
-    send_request: (可选，仅user dict和seiga dict)是否发送请求以获取用户头像和封面，默认为True。
-    config: (可选，仅user dict和seiga dict)配置。"""
+    file_local: (可选，仅media dict)本地存储路径。
+    video_local: (可选，仅video dict)本地存储路径。
+    send_request: (可选，仅channel dict)发送请求以保存二进制。
+    config: (可选，仅user dict和seiga dict和video dict和channel dict和channel section dict)配置。"""
     if isinstance(data, BlogEntry):
         return blog2DB(data)  # blog2DB的BlogEntry式
     if isinstance(data, Comment):
         return comment2DB(data, **kwargs)
     if isinstance(data, list):
         if not data:
-            return (0, []),
+            return (_MT.UNKNOWN, []),
         if 'bcid' in data[0] or 'scid' in data[0]:
             return commentRaw2DB(data, **kwargs)
         if 'follow_status' in data[0]:
@@ -356,6 +430,16 @@ def auto2DB(data, **kwargs):
             return seiga2DB(data, **kwargs)
         if 'collection' in data:
             return collection2DB(data)
+        if 'vid' in data and 'staff' in data:
+            return video2DB(data, **kwargs)
+        if 'channel_name' in data and 'join_permission' in data:
+            return channel2DB(data, **kwargs)
+        if 'channel_section_id' in data:
+            return channelSection2DB(data, **kwargs)
+        if 'notice_id' in data:
+            return channelNotice2DB(data)
+        if 'media_id' in data:
+            return media2DB(data, **kwargs)
     raise ValueError("无法识别数据类型")
 
 

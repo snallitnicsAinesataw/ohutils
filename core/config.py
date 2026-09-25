@@ -60,7 +60,7 @@ class Config:
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
     policy: Literal['merge', 'override', 'keep', 'keep_after'] = 'merge'
-    fileName: str = "ob{bid}"
+    fileName: str = "{bid}"
     blobName: str = "ob*"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
