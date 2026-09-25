@@ -23,7 +23,6 @@ class Config:
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
         'Accept': '*/*',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-        'Referer': 'https://api.ottohub.cn/',
         'Connection': 'keep-alive'
     }, compare=False)
     token: str = field(default_factory=str, repr=False)

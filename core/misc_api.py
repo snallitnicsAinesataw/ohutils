@@ -1,5 +1,7 @@
 from .util import startEnd, _request
 from .config import Config, getGlobalConfig
+import mimetypes
+import os
 import requests
 
 
@@ -46,3 +48,19 @@ def getSlideshow(config: Config = None) -> list:
         config = getGlobalConfig()
     url = f'https://{config.APIBase}api/slideshow/active/'
     return _request('get', 'json', 'getSlideshow', url, config=config)['data']['slides']
+
+
+@startEnd
+def uploadImage(file_path: str, config: Config = None) -> dict:
+    """上传图片。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/image/upload"
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type is None:
+        mime_type = 'application/octet-stream'
+    with open(file_path, 'rb') as f:
+        files = {'file_img': (os.path.basename(file_path), f, mime_type)}
+        data = {'token': config.token}
+        return _request('post', 'json', 'uploadImage', url,
+                        config=config, is_long=True, is_chat=True, files=files, data=data, no_retry=True)

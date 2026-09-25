@@ -233,10 +233,11 @@ def getVersion(path: str) -> int:
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
              f_name: str, url: str, *, config: Config = None, data: dict = None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
+             files: dict = None, no_retry: bool = False,
              ) -> Union[dict, bytes, Response]:
     if config is None:
         config = getGlobalConfig()
-    retries = config.retries
+    retries = 1 if no_retry else config.retries
     method, return_type = method.lower(), return_type.lower()
     timeout = config.uploadTimeout if is_long else config.timeout
     for attempt in range(retries):
@@ -250,20 +251,26 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 url = urlunparse(parsed._replace(query=new_query))
             if config.verbose:
                 logger.info(f"[{f_name}]{method}{config.colorGray} {url.split('token=')[0].strip('&?')}\033[0m")
-            headers = config.headers
+
+            headers = dict(config.headers)
             headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.8.0'  # 水印，大概
             if chat_token is not None:
                 headers['Authorization'] = 'Bearer ' + chat_token
+            if files:
+                headers.pop('Content-Type', None)  # 交给requests自己生成boundary
+
             if method == 'get':
                 resp = requests.get(url, timeout=timeout, headers=headers, stream=stream)
-            elif method == 'post':
+            elif method == 'post' and not files:
                 resp = requests.post(url, timeout=timeout, headers=headers, json=data)
+            elif method == 'post' and files:
+                resp = requests.post(url, timeout=timeout, headers=headers, files=files, data=data)
             elif method == 'put':
                 resp = requests.put(url, timeout=timeout, headers=headers, data=data)
             elif method == 'delete':
                 resp = requests.delete(url, timeout=timeout, headers=headers)
             else:
-                raise MethodNotAllowed
+                raise ValueError('不支持的method: ' + method)
             resp.raise_for_status()
             if return_type == 'json':
                 jsoned = resp.json()
