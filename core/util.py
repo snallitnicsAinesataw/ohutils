@@ -109,6 +109,7 @@ class VideoEntry:
     staffs: list[Staff]
     danmaku: list[Danmaku]
     comments: list[Comment['VideoEntry']]
+    is_gore: bool
 
     _cover: bytes = field(repr=False)  # 封面二进制
     _video_fp: str  # .ovarc路径

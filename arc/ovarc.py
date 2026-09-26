@@ -167,12 +167,16 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
         header = f.read(32)
         # 提取头
         flags = header[6]
+        is_gore = flags & 1
         v_c = header[7]
         vid_type, category = (v_c >> 4), v_c & 0xf
         pub_ts = struct.unpack('<I', header[0x8:0xC])[0]
         arc_ts = struct.unpack('<I', header[0xC:0x10])[0]
         channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
         tag_count = header[0x1E]
+
+        if header[:5] != b'OVARC':
+            raise ValueError(f"{fp}不是有效的.ovarc文件")
 
         # 元数据
         vid, uid, like, fav, view, dur, video_cover_addr = struct.unpack('<IIII IIQ', f.read(32))
@@ -236,6 +240,7 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
         tags=tags, vid_type=vid_type, category=category,
         title=title, intro=intro, staffs=staffs,
         danmaku=danmaku, comments=comments,
+        is_gore=bool(is_gore),
         _cover=cover_bytes,
         _video_fp=fp,
         _video_offset=video_offset,
