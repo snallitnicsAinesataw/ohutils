@@ -17,7 +17,7 @@ from datetime import datetime
 _T = TypeVar('_T')
 
 
-def _parseComment(version: int, data: bytes, offset: int) -> tuple[Comment, int]:
+def _parseComment(c_type: Literal['blog', 'video', 'seiga'], version: int, data: bytes, offset: int) -> tuple[Comment, int]:
     pin = 0  # PyCharm别扯
     if version >= 5:
         bcid, uid, ts, pin, content_len = struct.unpack_from('<IIII I', data, offset)
@@ -35,12 +35,12 @@ def _parseComment(version: int, data: bytes, offset: int) -> tuple[Comment, int]
         offset += 1
     replies = []
     for _ in range(reply_count):
-        reply, offset = _parseComment(version, data, offset)
+        reply, offset = _parseComment(c_type, version, data, offset)
         replies.append(reply)
     if version >= 5:
-        return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, bool(pin), pin, 'blog'), offset
+        return Comment(bcid, uid, ts, content, reply_count, replies, bool(pin), pin, c_type), offset
     else:
-        return Comment[BlogEntry](bcid, uid, ts, content, reply_count, replies, False, 0, 'blog'), offset
+        return Comment(bcid, uid, ts, content, reply_count, replies, False, 0, c_type), offset
 
 
 def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: int,
@@ -94,7 +94,7 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
 
     comments = []
     for _ in range(comment_count):
-        c, offset = _parseComment(version, data, offset)
+        c, offset = _parseComment('blog', version, data, offset)
         comments.append(c)
     if version >= 6:
         return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
@@ -104,6 +104,25 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
                          b_type, tags, cr_type, is_gore, attached_vid), offset
     else:
         return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments), offset
+
+
+def _writeComment(comment_ver: int, f, comment: Comment):
+    # 递归写评论
+    content_bytes = comment.content.encode('utf-8')
+    f.write(struct.pack('<I', comment.cid))
+    f.write(struct.pack('<I', comment.uid))
+    f.write(struct.pack('<I', comment.timestamp))
+    if comment_ver >= 5:  # v5新增字段pin_order
+        f.write(struct.pack('<I', comment.pin_order))
+    f.write(struct.pack('<I', len(content_bytes)))
+    f.write(content_bytes)
+    if comment_ver == 2:
+        f.write(struct.pack('<B', len(comment.replies)))
+    elif comment_ver >= 3:
+        f.write(struct.pack('<I', len(comment.replies)))
+        # v3及之后将reply_count改为4字节
+    for reply in comment.replies:
+        _writeComment(comment_ver, f, reply)
 
 
 def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], fp: str, config: Config = None):
@@ -127,7 +146,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
                 is_unavailable = forward.get("is_unavailable")
             flag = (blog_data.get("is_gore", 0) << 1) | is_unavailable << 2
 
-        f.write(b'OBARC')  # 4B magic
+        f.write(b'OBARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
         f.write(struct.pack('<B', flag if version == 4 else 0))  # 1B 标志位
         f.write(struct.pack('<B', 0))  # 1B 保留
@@ -167,26 +186,8 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         f.write(content_bytes)  # content
         f.write(struct.pack('<H', len(comments)))  # comment_count
 
-        # 递归写评论
-        def write_comment(c):
-            content_bytes = c.content.encode('utf-8')
-            f.write(struct.pack('<I', c.cid))
-            f.write(struct.pack('<I', c.uid))
-            f.write(struct.pack('<I', c.timestamp))
-            if version >= 5:  # v5新增字段pin_order
-                f.write(struct.pack('<I', c.pin_order))
-            f.write(struct.pack('<I', len(content_bytes)))
-            f.write(content_bytes)
-            if version == 2:
-                f.write(struct.pack('<B', len(c.replies)))
-            elif version >= 3:
-                f.write(struct.pack('<I', len(c.replies)))
-                # v3及之后将reply_count改为4字节
-            for reply in c.replies:
-                write_comment(reply)
-
         for comment in comments:
-            write_comment(comment)
+            _writeComment(version, f, comment)
 
         # ===================结尾标记===================
         f.write(_OBARC_END_MARKER)

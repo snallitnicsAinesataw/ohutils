@@ -47,7 +47,7 @@ class Danmaku:
     danmaku_id: int
     text: str
     time: float
-    mode: str
+    mode: Literal['top', 'bottom', 'scroll']
     color: str
     font_size: str
     render: str

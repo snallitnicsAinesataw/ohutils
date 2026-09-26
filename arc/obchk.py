@@ -1,6 +1,6 @@
 from ..core.util import encrypt, decrypt, Comment, BlogEntry, genKey, logger, _c
 from ..core.config import Config, getGlobalConfig
-from ..core._const import _YELLOW
+from ..core._const import _YELLOW, _OBCHK_END_MARKER
 import zlib
 import struct
 from .obarc import _parseBlog
@@ -206,8 +206,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         pack_ts = int(time.time())
         f.write(struct.pack('<I', pack_ts))
 
-        end_marker = bytes.fromhex("dc bd cc b2 e7 a2 d9 a4 f0 b1 b1 eb e6 e8 a8 dc bf b5 c4 a8 e8 dc b7")
-        f.write(end_marker)
+        f.write(_OBCHK_END_MARKER)
 
         # 回填大小和CRC32
         total_size = f.tell()
