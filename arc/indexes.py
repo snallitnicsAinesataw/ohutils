@@ -18,7 +18,7 @@ def buildBlogIndex(config: Config = None):
     if config is None:
         config = getGlobalConfig()
     index = {}
-    for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+    for path in glob.glob(os.path.join(config.savePath, config.obarcBlobName)):
         fn = os.path.basename(path)
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:
@@ -47,7 +47,7 @@ def buildUserCommentIdx(config: Config = None):
     if config is None:
         config = getGlobalConfig()
     index = {}
-    for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+    for path in glob.glob(os.path.join(config.savePath, config.obarcBlobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         fn = os.path.basename(path)
         try:
@@ -80,7 +80,7 @@ def buildOBCCommentIdx(config: Config = None):
     if config is None:
         config = getGlobalConfig()
     index = {}
-    for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+    for path in glob.glob(os.path.join(config.savePath, config.obarcBlobName)):
         bid = int(re.search(r'ob(\d+)', path).group(1))
         fn = os.path.basename(path)
         try:
@@ -112,7 +112,7 @@ def buildAllIndexes(config: Config = None):
     if config is None:
         config = getGlobalConfig()
     ob, c_obc, c_ou = {}, {}, {}
-    for path in glob.glob(os.path.join(config.savePath, config.blobName)):
+    for path in glob.glob(os.path.join(config.savePath, config.obarcBlobName)):
         fn = os.path.basename(path)
         bid = int(re.search(r'ob(\d+)', path).group(1))
         try:

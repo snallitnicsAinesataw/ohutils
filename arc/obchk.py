@@ -102,7 +102,7 @@ def serializeBlog(bid: int, config: Config = None) -> bytes:
     """将指定bid的.obarc文件序列化。"""
     if config is None:
         config = getGlobalConfig()
-    with open(os.path.join(config.savePath, config.fileName.format(bid=bid)), "rb") as fp:
+    with open(os.path.join(config.savePath, config.obarcName.format(bid=bid)), "rb") as fp:
         data = fp.read()
 
     new = data[5:24] + data[28:31] + data[32:-18]
@@ -161,7 +161,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
     current_offset = data_bias
 
     for bid in range(start, end + 1):
-        file = os.path.join(config.savePath, config.fileName.format(bid=bid))
+        file = os.path.join(config.savePath, config.obarcName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
             logger.warning('[buildChunk]' + _c(_YELLOW, 'File does not exist: {file}', config))

@@ -46,17 +46,11 @@ class Comment(Generic[_TParent]):
 class Danmaku:
     danmaku_id: int
     text: str
-    time: float
+    time_ms: int
     mode: Literal['top', 'bottom', 'scroll']
-    color: str
-    font_size: str
+    color_rgb: int
+    font_size: int
     render: str
-
-    @classmethod
-    def _from_dict(cls, d: dict):
-        valid_keys = {f.name for f in fields(cls)}
-        filtered = {k: v for k, v in d.items() if k in valid_keys}
-        return cls(**filtered)
 
 
 @dataclass
@@ -90,28 +84,50 @@ class BlogEntry:
 
 
 @dataclass
+class Staff:
+    uid: int
+    role: str
+    sort_order: int
+
+
+@dataclass
 class VideoEntry:
     vid: int
     uid: int
     like_count: int
     favorite_count: int
     view_count: int
+    duration: int
     channel_id: int
-    timestamp: int
-    tags: List[str]
+    pub_time: int
+    arc_time: int
+    tags: list[str]
     vid_type: int
     category: int
     title: str
     intro: str
-    danmaku: List[Danmaku]
-    comment_count: int
-    comments: List[Comment['VideoEntry']]
+    staffs: list[Staff]
+    danmaku: list[Danmaku]
+    comments: list[Comment['VideoEntry']]
 
-    @classmethod
-    def _from_dict(cls, d: dict):
-        valid_keys = {f.name for f in fields(cls)}
-        filtered = {k: v for k, v in d.items() if k in valid_keys}
-        return cls(**filtered)
+    _cover: bytes = field(repr=False)  # 封面二进制
+    _video_fp: str  # .ovarc路径
+    _video_offset: int  # video在文件里的偏移
+    _video_size: int  # video字节数
+
+    def extractCover(self) -> bytes:
+        return self._cover
+
+    def extractVideo(self, chunk_size: int = 8192):
+        with open(self._video_fp, 'rb') as f:
+            f.seek(self._video_offset)
+            remaining = self._video_size
+            while remaining > 0:
+                chunk = f.read(min(chunk_size, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+                yield chunk
 
 
 def parseTime(time_str: str) -> int:
@@ -233,16 +249,21 @@ def getVersion(path: str) -> int:
         return f.read(1)[0]  # 版本号
 
 
+def _raise_exhaust(retries, url, f_name, config):
+    t_ = f"Retries({retries}) exhausted while requesting {url.split('token=')[0].strip('&?')}"
+    raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
+
+
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
              f_name: str, url: str, *, config: Config = None, data: dict = None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
-             files: dict = None, no_retry: bool = False,
+             files: dict = None, no_retry: bool = False, is_video: bool = False,
              ) -> Union[dict, bytes, Response]:
     if config is None:
         config = getGlobalConfig()
     retries = 1 if no_retry else config.retries
     method, return_type = method.lower(), return_type.lower()
-    timeout = config.uploadTimeout if is_long else config.timeout
+    timeout = config.longTimeout if is_long else config.timeout
     for attempt in range(retries):
         try:
             if config.alwaysUseToken and not is_chat:
@@ -256,7 +277,9 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 logger.info(f"[{f_name}]{method} {_c(_const._GRAY, url.split('token=')[0].strip('&?'), config)}")
 
             headers = dict(config.headers)
-            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.8.0'  # 水印，大概
+            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.9.0'  # 水印，大概
+            if is_video:
+                headers['Range'] = 'bytes=0-'
             if chat_token is not None:
                 headers['Authorization'] = 'Bearer ' + chat_token
             if files:
@@ -275,6 +298,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
             else:
                 raise ValueError('不支持的method: ' + method)
             resp.raise_for_status()
+
             if return_type == 'json':
                 jsoned = resp.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
@@ -285,7 +309,10 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 return resp.content
             elif return_type == 'stream' or stream:
                 return resp
+
         except requests.HTTPError as e:
+            # 发生HTTP错误
+            status = e.response.status_code
             try:
                 jsoned = e.response.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
@@ -293,19 +320,25 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                     raise mappings.get(msg, APIError)(msg)
             except ValueError:
                 # 如果响应不是JSON
+                if status >= 500:
+                    # 5xx，重试
+                    if attempt == retries - 1:
+                        _raise_exhaust(retries, url, f_name, config)  # 耗尽，raise
+                    t_ = f"Retry {attempt + 1}/{retries}: {e}"
+                    logger.warning(f"[{f_name}]{_c(_const._YELLOW, t_, config)}")
+                    time.sleep(random.uniform(*config.retryDelay))
+                    continue
+                # 4xx不重试
                 t_ = f"{e.response.status_code} error: {e.response.text}"
                 raise APIError(f"[{f_name}]{_c(_const._RED, t_, config)}")
         except (requests.RequestException, ValueError) as e:
             if attempt == retries - 1:
-                t_ = f"Retries({retries}) exhausted while requesting {url.split('token=')[0].strip('&?')}"
-                raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
-
+                _raise_exhaust(retries, url, f_name, config)  # 耗尽，raise
             t_ = f"Retry {attempt + 1}/{retries}: {e}"
             logger.warning(f"[{f_name}]{_c(_const._YELLOW, t_, config)}")
             time.sleep(random.uniform(*config.retryDelay))
 
-    t_ = f"Retries({retries}) exhausted while requesting {url.split('token=')[0].strip('&?')}"
-    raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
+    _raise_exhaust(retries, url, f_name, config)  # 末尾raise
 
 
 def flattenComments(recur_list: list[Comment]) -> list[Comment]:
@@ -411,9 +444,9 @@ def _format(pattern: str, **k):
     )
 
 
-def _temp_name(pattern: str, ext: str) -> str:
+def _temp_name(name: str) -> str:
     rand = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    return f"{pattern}.{ext}.{rand}.ohu-temp"
+    return f"{name}.{rand}.ohu-temp"
 
 
 def _fn_formatTime(ts: int) -> str:
@@ -422,3 +455,12 @@ def _fn_formatTime(ts: int) -> str:
 
 def _c(color: str, str_: str, c: Config):
     return color + str_ + _const._CLEAR if c.richLog else str_
+
+
+def _iter_chunks(stream, chunk_size=8192):
+    if isinstance(stream, bytes):
+        for i in range(0, len(stream), chunk_size):
+            yield stream[i:i + chunk_size]
+    else:  # Response
+        for chunk_ in stream.iter_content(chunk_size):
+            if chunk_: yield chunk_

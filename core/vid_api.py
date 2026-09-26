@@ -3,6 +3,7 @@ from .config import Config, getGlobalConfig
 from typing import Literal, Union
 from .exception import ExhaustedRetriesError, NotInCollectionError
 from ._const import _RED
+from requests import Response
 import os
 
 
@@ -24,7 +25,15 @@ def getAllDanmaku(vid: int, config: Config = None) -> list[Danmaku]:
     ds = _request('get', 'json', 'getAllDanmaku', url, config=config).get('data', [])
     resp = []
     for d in ds:
-        resp.append(Danmaku._from_dict(d))
+        resp.append(Danmaku(
+            danmaku_id=int(d['danmaku_id']),
+            text=d['text'],
+            time_ms=int(float(d['time']) * 1000),
+            mode=d['mode'],
+            color_rgb=int(d['color'].lstrip('#'), 16),
+            font_size=int(d['font_size'].replace('px', '')),
+            render=d.get('render', ''),
+        ))
     return resp
 
 
@@ -123,22 +132,23 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
 
 
 @startEnd
-def _downloadVideo(vid: int, config: Config, stream: bool = True):
-    video = getVideoDetail(vid, config)
-    resp = _request('get', 'stream', 'downloadVideo', video['video_url'], config=config, stream=stream)
+def _downloadVideo(url: str, config: Config, stream: bool = True) -> Response:
+    resp = _request('get', 'stream', '_downloadVideo', url,
+                    config=config, stream=stream, is_long=True, is_chat=True, is_video=True)
     return resp
 
 
-def downloadVideo(vid: int, chunk_size: int = 8192, config: Config = None):
+def downloadVideo(vid: int, config: Config = None):
     """下载指定vid的视频。"""
     if config is None:
         config = getGlobalConfig()
     suffix = '.ohu-downloading'
-    resp = _downloadVideo(vid, config, stream=True)
+    video = getVideoDetail(vid, config)
+    resp = _downloadVideo(video['video_url'], config, stream=True)
     fp = os.path.join(config.videoPath, config.videoName.format(vid=video['vid'], uid=video['uid']) + suffix)
     fp_new = fp
     with open(fp, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=chunk_size):
+        for chunk in resp.iter_content(chunk_size=config.chunkSize):
             f.write(chunk)
     if fp.endswith(suffix):
         fp_new = fp[:-len(suffix)]

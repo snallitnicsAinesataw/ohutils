@@ -4,7 +4,7 @@ from ..core.config import Config, getGlobalConfig
 from ..core.util import (
     Comment, BlogEntry, getVersion, APIError, decrypt, genKey, logger, parseTime, formatTime,
     _format, _fn_formatTime, _c)
-from typing import List, Dict, Tuple, TypeVar, Optional
+from typing import List, Dict, Tuple, TypeVar, Optional, Literal
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
 from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED
@@ -322,7 +322,7 @@ def loadBlog(bid: int, fn: str = None, config: Config = None) -> BlogEntry:
         config = getGlobalConfig()
     if fn is None:
         try:
-            fn = _format(config.fileName, bid="ob%i" % bid) + '.obarc'
+            fn = _format(config.obarcName, bid="ob%i" % bid) + '.obarc'
         except KeyError as e:
             raise ValueError(
                 f"fileName包含bid以外的占位符{e}") from e
@@ -354,10 +354,10 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
     if policy not in ['keep', 'merge', 'override', 'keep_after']:
         raise ValueError
     if policy == 'keep':
-        if '{pubts}' in config.fileName or '{pubftime}' in config.fileName:
+        if '{pubts}' in config.obarcName or '{pubftime}' in config.obarcName:
             raise ValueError(
                 "keep策略仅支持{bid}、{ver}、{toolver}占位符，请用keep_after")
-        keep_fn = _format(config.fileName, bid='ob%i' % bid, ver=version) + '.obarc'
+        keep_fn = _format(config.obarcName, bid='ob%i' % bid, ver=version) + '.obarc'
         file_path = os.path.join(config.savePath, keep_fn)
         if os.path.exists(file_path):
             if verbose:
@@ -372,7 +372,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
         blog_data = getBlogDetail(bid, config=config)
         pub_ts = parseTime(blog_data["time"]) if blog_data.get("time") else DEFAULT_TS
         fn = _format(
-            config.fileName,
+            config.obarcName,
             bid='ob%i' % bid, uid=blog_data.get('uid', 0),
             ver=version,
             pubts=pub_ts,

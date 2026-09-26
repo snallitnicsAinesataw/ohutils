@@ -29,7 +29,7 @@ class Config:
     alwaysUseToken: bool = False
 
     timeout: int = 10
-    uploadTimeout: int = 120
+    longTimeout: int = 120
     retries: int = 3
     verbose: bool = False
     useStartEnd: bool = False
@@ -54,8 +54,10 @@ class Config:
     savePath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
     policy: Literal['merge', 'override', 'keep', 'keep_after'] = 'merge'
-    fileName: str = "{bid}"
-    blobName: str = "ob*"
+    obarcName: str = "{bid}"
+    obarcBlobName: str = "ob*"
+    ovarcName: str = "{vid}"
+    ovarcBlobName: str = "ov*"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
@@ -85,6 +87,8 @@ class Config:
     userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
     richLog: bool = True
+
+    chunkSize: int = 8192
 
     @classmethod
     def fromDict(cls, d: dict):

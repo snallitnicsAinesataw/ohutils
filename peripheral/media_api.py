@@ -47,7 +47,7 @@ def searchMedia(term: str, offset: int = 0, m_type: str = None, tags: list[str] 
 
 
 @startEnd
-def downloadMedia(m_id: int, chunk_size: int = 8192, config: Config = None):
+def downloadMedia(m_id: int, config: Config = None):
     """下载素材。"""
     if config is None:
         config = getGlobalConfig()
@@ -57,7 +57,7 @@ def downloadMedia(m_id: int, chunk_size: int = 8192, config: Config = None):
     fp = os.path.join(config.mediaPath, config.mediaName.format(m_id=media["media_id"], ext=media["extension"]) + suffix)
     fp_new = fp
     with open(fp, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=chunk_size):
+        for chunk in resp.iter_content(chunk_size=config.chunkSize):
             f.write(chunk)
     if fp.endswith(suffix):
         fp_new = fp[:-len(suffix)]

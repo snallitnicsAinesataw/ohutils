@@ -40,11 +40,16 @@ MT_DOC = '文档'
 MT_ZIP = '压缩包'
 MT_OTHER = '其他'
 MT_ALL = None  # 神秘API设计，media_type传中文
+DANMAKU_SCROLL = 0
+DANMAKU_TOP = 1
+DANMAKU_BOTTOM = 2
 
 _DEFAULT_FN_TIME = '20000101_000000'
 _OBARC_END_MARKER = b'\xDC\xBD\xCC\xB2\xA0\xAD\xB9\xB7\xF0\xA8\xDC\xBF\xB5\xC4\xA8\xE8\xDC\xB7'
 _OBCHK_END_MARKER = b'\xdc\xbd\xcc\xb2\xe7\xa2\xd9\xa4\xf0\xb1\xb1\xeb\xe6\xe8\xa8\xdc\xbf\xb5\xc4\xa8\xe8\xdc\xb7'
+_OVARC_END_MARKER = b'\xA9\xBB\xAD\xB7\xE9\xAB\xEB\xAD'
 _LATEST_OBARC_VER = 6
+_LATEST_OVARC_VER = 1
 _RED = '\033[31m'
 _YELLOW = '\033[33m'
 _GRAY = '\033[90m'
