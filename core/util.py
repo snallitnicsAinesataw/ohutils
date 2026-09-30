@@ -141,6 +141,10 @@ def formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _c(color: str, str_, c: Config):
+    return color + str(str_) + _const._CLEAR if c.richLog else str_
+
+
 def startEnd(func_=None, *, is_auth: bool = False):
     """装饰器。"""
     def deco(func):
@@ -409,22 +413,39 @@ def useConfig(config: Config):
         setGlobalConfig(orig_cfg)  # 恢复配置
 
 
-def _recur_request(f_name: str, recur_func: Callable[[int], list[_T]],
-                   limit: int, delay: tuple[float, float], config: Config = None) -> list[_T]:
+def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Optional[int]]],
+                   limit: int, delay: tuple[float, float], *, is_page: bool = False, config: Config = None) -> list[_T]:
+    """recur_func: (off) -> (items, total_items|None)
+    is_page=True时off是page, 否则是offset。"""
     if config is None:
         config = getGlobalConfig()
-    all_, offset = [], 0
+    all_ = []
+    off_page = 1 if is_page else 0
     while True:
-        if offset != 0 and config.verbose:
-            logger.info(f"[{f_name}]curr offset: {offset}")
-        list_ = recur_func(offset)
-        if not list_:
+        if off_page != 0 and config.verbose:
+            logger.info(f"[{f_name}]curr offset/page: {off_page}")
+        try:
+            items, total = recur_func(off_page)
+        except ExhaustedRetriesError as e:
+            logger.error(f"[{f_name}]{_c(_RED, f'fail to get all: {e}', config)}")
+            if all_:
+                logger.warning(f"[{f_name}]{_c(_YELLOW, f'end prematurely, already got {len(all_)} item(s)', config)}")
             break
-        all_.extend(list_)
-        if len(list_) < limit:
-            break  # 最后一页没满，结束
-        offset += limit
-        time.sleep(random.uniform(*delay))  # 限速
+        if not items:
+            if all_:
+                logger.warning(f"[{f_name}]{_c(_YELLOW, f'end prematurely(empty page), already got {len(all_)} item(s)', config)}")
+            break
+        all_.extend(items)
+        if total is not None:
+            if len(all_) >= total:
+                break
+        elif len(items) < limit:
+            break
+        if is_page:
+            off_page += 1
+        else:
+            off_page += limit
+        time.sleep(random.uniform(*delay))
     return all_
 
 
@@ -452,10 +473,6 @@ def _temp_name(name: str) -> str:
 
 def _fn_formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y%m%d_%H%M%S")
-
-
-def _c(color: str, str_: str, c: Config):
-    return color + str_ + _const._CLEAR if c.richLog else str_
 
 
 def _iter_chunks(stream, chunk_size=8192):

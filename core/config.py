@@ -36,10 +36,7 @@ class Config:
 
     commentPerReq: int = 12
     subCommentPerReq: int = 6
-    userBlogPerReq: int = 20
-    latestBlogPerReq: int = 12
-    randomBlogPerReq: int = 12
-    searchBlogPerReq: int = 12
+    blogPerReq: int = 12
     channelsPerReq: int = 12
     managePerReq: int = 12
     msgPerReq: int = 50
@@ -79,12 +76,9 @@ class Config:
     ascending: bool = False
     gore: bool = True
 
-    blogToCommentDelay: tuple[float, float] = (1.0, 1.0)
-    commentBatchDelay: tuple[float, float] = (0.0, 2.0)
-    seigaDelay: tuple[float, float] = (0.5, 1.0)
-    blogBatchDelay: tuple[float, float] = (0.4, 0.8)
+    stageDelay: tuple[float, float] = (1.0, 1.0)
+    pagingDelay: tuple[float, float] = (0.4, 0.8)
     retryDelay: tuple[float, float] = (0.7, 1.1)
-    userBatchDelay: tuple[float, float] = (0.6, 0.9)
 
     richLog: bool = True
 

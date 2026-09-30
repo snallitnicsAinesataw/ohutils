@@ -166,6 +166,8 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
     with open(fp, "rb") as f:
         header = f.read(32)
         # 提取头
+        if header[:5] != b'OVARC':
+            raise ValueError(f"{fp}不是有效的.ovarc文件")
         flags = header[6]
         is_gore = flags & 1
         v_c = header[7]
@@ -174,9 +176,6 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
         arc_ts = struct.unpack('<I', header[0xC:0x10])[0]
         channel_id = struct.unpack('<H', header[0x1C:0x1E])[0]
         tag_count = header[0x1E]
-
-        if header[:5] != b'OVARC':
-            raise ValueError(f"{fp}不是有效的.ovarc文件")
 
         # 元数据
         vid, uid, like, fav, view, dur, video_cover_addr = struct.unpack('<IIII IIQ', f.read(32))
@@ -305,7 +304,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         return None, True
 
     # ===================获取评论===================
-    # time.sleep(random.uniform(*config.blogToCommentDelay))
+    time.sleep(random.uniform(*config.stageDelay))
     if verbose:
         logger.info(f"[_saveVideo/v{version}]Get comments of ov{vid}...")
     try:
@@ -318,7 +317,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         logger.info(f"[_saveVideo/v{version}]Finish, get {len(comments)} top comment(s) in total")
 
     # ===================获取弹幕===================
-    # time.sleep(random.uniform(*config.blogToCommentDelay))
+    time.sleep(random.uniform(*config.stageDelay))
     if verbose:
         logger.info(f"[_saveVideo/v{version}]Get danmaku of ov{vid}...")
     try:
@@ -331,7 +330,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         logger.info(f"[_saveVideo/v{version}]Finish, get {len(danmaku_list)} danmaku in total")
 
     # ===================获取封面===================
-    # time.sleep(random.uniform(*config.blogToCommentDelay))
+    time.sleep(random.uniform(*config.stageDelay))
     if verbose:
         logger.info(f"[_saveVideo/v{version}]Get cover of ov{vid}...")
     try:
@@ -345,7 +344,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         logger.info(f"[_saveVideo/v{version}]finished getting cover")
 
     # ===================获取视频流===================
-    # time.sleep(random.uniform(*config.blogToCommentDelay))
+    time.sleep(random.uniform(*config.stageDelay))
     if verbose:
         logger.info(f"[_saveVideo/v{version}]Get video stream of ov{vid}...")
     video_stream = _downloadVideo(video_data['video_url'], config, stream=True)

@@ -127,7 +127,7 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         if len(comment_list) < config.commentPerReq:
             break
         offset += config.commentPerReq
-        time.sleep(random.uniform(*config.commentBatchDelay))
+        time.sleep(random.uniform(*config.pagingDelay))
     return all_comments
 
 

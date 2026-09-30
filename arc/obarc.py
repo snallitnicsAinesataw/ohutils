@@ -385,7 +385,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
         return None, True  # 在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
 
     # ===================获取评论===================
-    time.sleep(random.uniform(*config.blogToCommentDelay))
+    time.sleep(random.uniform(*config.stageDelay))
     if verbose:
         logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
     try:

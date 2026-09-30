@@ -4,7 +4,7 @@ from .config import Config, getGlobalConfig
 import requests
 import time
 from typing import List, Union
-from ._const import _RED
+from ._const import _RED, _YELLOW
 import random
 
 
@@ -24,7 +24,7 @@ def getLatestBlog(offset: int = 0, config: Config = None) -> list[dict]:
     """获取最近的动态。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/blog/latest?offset={offset}&num={config.latestBlogPerReq}" +\
+    url = f"https://{config.APIBase}api/blog/latest?offset={offset}&num={config.blogPerReq}" + \
           ('' if config.gore else f"&is_gore=0")
     return _request('get', 'json', 'getLatestBlog', url, config=config)['blog_list']
 
@@ -56,10 +56,16 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
         except ExhaustedRetriesError as e:
             t_ = f"fail to get all comments: {e}"
             logger.error(f"[getAllBlogComments]{_c(_RED, t_, config)}")
-            return []  # 过于激进?
+            if all_comments:
+                t_ = f"end prematurely, already got {len(all_comments)} comment(s)"
+                logger.warning(f"[getAllBlogComments]{_c(_YELLOW, t_, config)}")
+            break
 
         if not comment_list:
-            return []  # 过于激进?
+            if all_comments:
+                t_ = f"end prematurely(empty page), already got {len(all_comments)} comment(s)"
+                logger.warning(f"[getAllBlogComments]{_c(_YELLOW, t_, config)}")
+            break
 
         for c in comment_list:
             child_num = int(c.get("child_comment_num", 0))
@@ -84,7 +90,7 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
         if len(comment_list) < config.commentPerReq:
             break
         offset += config.commentPerReq
-        time.sleep(random.uniform(*config.commentBatchDelay))
+        time.sleep(random.uniform(*config.pagingDelay))
     return all_comments
 
 
@@ -103,7 +109,7 @@ def getRandomBlogs(config: Config = None) -> list[dict]:
     """获取一组随机动态。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/blog/random?num={config.randomBlogPerReq}"
+    url = f"https://{config.APIBase}api/blog/random?num={config.blogPerReq}"
     return _request('get', 'json', 'getRandomBlogs', url, config=config)['blog_list']
 
 
@@ -113,7 +119,7 @@ def searchBlogs(term: str, offset: int = 0, bid_desc: bool = True, view_desc: bo
     """搜索动态。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/blog/search?search_term={term}&offset={offset}&num={config.searchBlogPerReq}" \
+    url = f"https://{config.APIBase}api/blog/search?search_term={term}&offset={offset}&num={config.blogPerReq}" \
           f"&bid_desc={1 if bid_desc else 0}&view_count_desc={1 if view_desc else 0}"
     return _request('get', 'json', 'searchBlogs', url, config=config)['data']
 
@@ -145,44 +151,6 @@ def getManageBlogs(offset: int = 0, config: Config = None) -> dict:
         f"https://{config.APIBase}api/blog/manage-list?num={config.managePerReq}&offset={offset}&_t={int(time.time())}"
         f"&token={config.token}")
     return _request('get', 'json', "getManageBlogs", url, config=config)['data']
-
-
-@startEnd
-def _getFavBlogs(offset: int = 0, config: Config = None) -> dict:
-    """获取一组收藏的动态(不递归)。需要token。"""
-    if config is None:
-        config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
-          f"&_t={int(time.time())}&token={config.token}"
-    return _request('get', 'json', "_getFavBlogs", url, config=config)
-
-
-@startEnd
-def getAllFavBlogs(return_dict: bool = False, config: Config = None) -> Union[list[int], list[dict]]:
-    """获取所有收藏的动态。需要token。"""
-    if config is None:
-        config = getGlobalConfig()
-    all_blogs = []
-    offset = 0
-    while True:
-        if offset != 0 and config.verbose:
-            logger.info(f"[getAllFavBlogs]curr offset: {offset}")
-        try:
-            data = _getFavBlogs(offset, config)
-        except ExhaustedRetriesError as e:
-            t_ = f"fail to get all favorite blogs: {e}"
-            logger.error(f"[getAllFavBlogs]{_c(_RED, t_, config)}")
-            return []
-        blog_list = data['data'].get("blog_list", [])
-        if not blog_list:
-            return []
-        for b in blog_list:
-            all_blogs.append(b if return_dict else b['bid'])
-        if len(blog_list) < config.managePerReq:
-            break
-        offset += config.managePerReq
-        time.sleep(random.uniform(*config.blogBatchDelay))
-    return all_blogs
 
 
 @startEnd

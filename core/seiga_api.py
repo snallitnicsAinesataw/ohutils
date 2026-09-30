@@ -58,7 +58,7 @@ def downloadSeiga(sid: int, config: Config = None) -> bool:
         content = _request('get', 'content', 'downloadSeiga', url, config=config)
         with open(os.path.join(config.seigaPath, config.seigaName.format(sid=sid, page=pg)), "wb") as f:
             f.write(content)
-        time.sleep(random.uniform(*config.seigaDelay))
+        time.sleep(random.uniform(*config.pagingDelay))
     return True
 
 
@@ -145,5 +145,5 @@ def getAllSeigaComments(sid: int, parent_scid: int = 0, config: Config = None) -
         if len(comment_list) < config.commentPerReq:
             break
         offset += config.commentPerReq
-        time.sleep(random.uniform(*config.commentBatchDelay))
+        time.sleep(random.uniform(*config.pagingDelay))
     return all_comments
