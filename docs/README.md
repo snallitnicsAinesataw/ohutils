@@ -10,7 +10,15 @@
 - 多格式存档 (.obarc, .obchk; .db)
 - 聊天室客户端
 
-## 安装 (并不能)
+## 安装
+从源码安装：
+```commandline
+git clone https://github.com/snallitnicsAinesataw/ohutils.git
+cd ohutils
+pip install -e .
+```
+
+从pip安装: (并不能)
 ```commandline
 pip install ohutils
 ```

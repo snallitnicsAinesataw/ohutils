@@ -7,6 +7,7 @@ from .config import Config, getGlobalConfig
 import websocket
 from ._const import _YELLOW, _GRAY, _RED
 from typing import Optional, Callable, Any, Union, Tuple
+from urllib.parse import quote
 
 
 class ChatClient(websocket.WebSocketApp):
@@ -31,7 +32,7 @@ class ChatClient(websocket.WebSocketApp):
         通常不需直接实例化，而是使用connectChat()创建。如需直接使用，参数含义与connectChat()一致。"""
         if token is None and not guest:
             raise ValueError("非guest模式需要chat_token")
-        self._url = f'wss://{config.chatAPIBase}ws?room={room}' + ('' if guest else f'&token={token}')
+        self._url = f'wss://{config.chatAPIBase}ws?room={room}' + ('' if guest else f'&token={quote(token, safe="")}')
         self.ws = None
         self._token = token
         self.room = room

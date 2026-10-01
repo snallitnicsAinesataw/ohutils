@@ -350,18 +350,22 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
 
     verbose = config.verbose
     policy = config.policy
+    skip = False
+    blog_data, comments = {}, []   # 默认值。在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
 
     if policy not in ['keep', 'merge', 'override', 'keep_after']:
         raise ValueError
+
+    fn = _format(config.obarcName, bid='ob%i' % bid, ver=version) + '.obarc'
+    file_path = os.path.join(config.savePath, fn)
+
     if policy == 'keep':
         if '{pubts}' in config.obarcName or '{pubftime}' in config.obarcName:
             raise ValueError(
                 "keep策略仅支持{bid}、{ver}、{toolver}占位符，请用keep_after")
-        keep_fn = _format(config.obarcName, bid='ob%i' % bid, ver=version) + '.obarc'
-        file_path = os.path.join(config.savePath, keep_fn)
         if os.path.exists(file_path):
             if verbose:
-                t_ = f"File {keep_fn} already exist, skip due to 'keep' policy"
+                t_ = f"File {fn} already exist, skip due to 'keep' policy"
                 logger.info(f"[_archiveBlog/v{version}]{_c(_YELLOW, t_, config)}")
             return file_path, False
 
@@ -382,20 +386,21 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
     except BIDError as e:
         t_ = f"Blog ob{bid} content get failed: {e}"
         logger.error(f"[_archiveBlog/v{version}]{_c(_RED, t_, config)}")
-        return None, True  # 在26/8/9左右修复了仍能获取已删除动态评论的bug。这是坏事。
+        skip = True
 
     # ===================获取评论===================
-    time.sleep(random.uniform(*config.stageDelay))
-    if verbose:
-        logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
-    try:
-        comments = getAllBlogComments(bid, config=config)
-    except requests.RequestException as e:
-        t_ = f"Network error: {e}"
-        logger.error(f'[_archiveBlog/v{version}]{_c(_RED, t_, config)}')
-        return file_path, True
-    if verbose:
-        logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
+    if not skip:
+        time.sleep(random.uniform(*config.stageDelay))
+        if verbose:
+            logger.info(f"[_archiveBlog/v{version}]Get comments of ob{bid}...")
+        try:
+            comments = getAllBlogComments(bid, config=config)
+        except requests.RequestException as e:
+            t_ = f"Network error: {e}"
+            logger.error(f'[_archiveBlog/v{version}]{_c(_RED, t_, config)}')
+            return file_path, True
+        if verbose:
+            logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
 
     # ===================写文件===================
     exist = os.path.exists(file_path)

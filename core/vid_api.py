@@ -1,10 +1,12 @@
-from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger, _c
+from .util import startEnd, Comment, Danmaku, VideoEntry, _request, parseTime, logger, _c, _format, _fn_2hms, _fn_formatTime, _temp_name
 from .config import Config, getGlobalConfig
 from typing import Literal, Union
 from .exception import ExhaustedRetriesError, NotInCollectionError
-from ._const import _RED
+from ._const import _RED, DEFAULT_TS
 from requests import Response
 import os
+import time
+import random
 
 
 @startEnd
@@ -99,7 +101,7 @@ def getAllVideoComments(vid: int, parent_vcid: int = 0,
         if offset != 0 and config.verbose:
             logger.info(f"[getAllVideoComments]curr offset: {offset}")
         try:
-            comment_list = _getVideoCommentList(vid, parent_vcid, offset, config.ascending, include_pinned, config)
+            comment_list = _getVideoCommentList(vid, offset, parent_vcid, config.ascending, include_pinned, config)
         except ExhaustedRetriesError as e:
             t_ = f"fail to get all comments: {e}"
             logger.error(f"[getAllVideoComments]{_c(_RED, t_, config)}")
@@ -142,15 +144,19 @@ def downloadVideo(vid: int, config: Config = None):
     """下载指定vid的视频。"""
     if config is None:
         config = getGlobalConfig()
-    suffix = '.ohu-downloading'
     video = getVideoDetail(vid, config)
+
+    pub_ts = parseTime(video["time"]) if video.get("time") else DEFAULT_TS
+    fn = _format(config.videoName,
+                 vid='ov%i' % video['vid'], uid=video['uid'], dur=video['duration'], durf=_fn_2hms(video['duration']),
+                 pubts=pub_ts, pubftime=_fn_formatTime(pub_ts))
+    temp_fn = _temp_name(fn)
+    fp = os.path.join(config.videoPath, temp_fn)
+    fp_new = os.path.join(config.videoPath, fn)
+
     resp = _downloadVideo(video['video_url'], config, stream=True)
-    fp = os.path.join(config.videoPath, config.videoName.format(vid=video['vid'], uid=video['uid']) + suffix)
-    fp_new = fp
     with open(fp, "wb") as f:
         for chunk in resp.iter_content(chunk_size=config.chunkSize):
             f.write(chunk)
-    if fp.endswith(suffix):
-        fp_new = fp[:-len(suffix)]
     os.replace(fp, fp_new)
     logger.info(f'[downloadVideo]video downloaded: {fp_new}')

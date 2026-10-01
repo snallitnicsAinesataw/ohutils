@@ -9,8 +9,7 @@ def getRecChannels(page: int = 1, config: Config = None) -> dict:
     """获取config.channelsPerReq条推荐的频道。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/channel?page={page}&limit={config.channelsPerReq}" \
-          f"&sort={config.sorting}&order={'asc' if config.ascending else 'desc'}"
+    url = f"https://{config.APIBase}api/channel?page={page}&limit={config.channelsPerReq}&order={'asc' if config.ascending else 'desc'}"
     return _request('get', 'json', 'getRecChannels', url, config=config)['data']
 
 
@@ -77,10 +76,10 @@ def getAllChannelContents(cid: int, type_: Literal['all', 'blog', 'video'] = 'al
 
 
 @startEnd
-def getChannelPins(cid: int, config: Config = None) -> dict:
+def getChannelPins(cid: int, config: Config = None) -> list[dict]:
     """获取特定频道的置顶。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/channel/{cid}/pins?order={'asc' if config.ascending else 'desc'}" \
           f"&limit={MAX_LIMIT}"
-    return _request('get', 'json', 'getChannelPins', url, config=config)['data']
+    return _request('get', 'json', 'getChannelPins', url, config=config)['data']['pins']

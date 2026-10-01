@@ -6,6 +6,7 @@ import time
 from typing import List, Union
 from ._const import _RED, _YELLOW
 import random
+from urllib.parse import quote
 
 
 @startEnd
@@ -148,8 +149,8 @@ def getManageBlogs(offset: int = 0, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = (
-        f"https://{config.APIBase}api/blog/manage-list?num={config.managePerReq}&offset={offset}&_t={int(time.time())}"
-        f"&token={config.token}")
+        f"https://{config.APIBase}api/blog/manage-list?num={config.blogPerReq}&offset={offset}&_t={int(time.time())}"
+        f"&token={quote(config.token, safe='')}")
     return _request('get', 'json', "getManageBlogs", url, config=config)['data']
 
 

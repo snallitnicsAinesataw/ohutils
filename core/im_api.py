@@ -1,5 +1,6 @@
 from .util import startEnd, _request
 from .config import Config, getGlobalConfig
+from urllib.parse import quote
 
 
 @startEnd
@@ -7,7 +8,7 @@ def getUnreadMsgNum(config: Config = None) -> int:
     """获取未读消息数。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/im/unread-count?token={config.token}"
+    url = f"https://{config.APIBase}api/im/unread-count?token={quote(config.token, safe='')}"
     return int(_request('get', 'json', 'getUnreadMsgNum', url, config=config)['data']['new_message_num'])
 
 
@@ -16,7 +17,7 @@ def getUnreadModerationNum(config: Config = None) -> dict:
     """获取未读审核日志数。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/moderation/logs/unread-count?token={config.token}"
+    url = f"https://{config.APIBase}api/moderation/logs/unread-count?token={quote(config.token, safe='')}"
     return _request('get', 'json', 'getUnreadModerationNum', url, config=config)['data']
 
 
@@ -25,7 +26,7 @@ def getCommentRepliesNum(config: Config = None) -> int:
     """获取｢评论我的｣消息数。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/im/comment-replies/unread-count?token={config.token}"
+    url = f"https://{config.APIBase}api/im/comment-replies/unread-count?token={quote(config.token, safe='')}"
     return int(_request('get', 'json', 'getCommentRepliesNum', url, config=config)['data']['unread_count'])
 
 
@@ -34,7 +35,7 @@ def getMentionsNum(config: Config = None) -> int:
     """获取｢@我的｣消息数。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/im/mentions/unread-count?token={config.token}"
+    url = f"https://{config.APIBase}api/im/mentions/unread-count?token={quote(config.token, safe='')}"
     return int(_request('get', 'json', 'getMentionsNum', url, config=config)['data']['unread_count'])
 
 
@@ -61,7 +62,7 @@ def getIM(receiver: int, offset: int = 0, config: Config = None) -> list:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/im/conversations/{receiver}/messages?offset={offset}"\
-          f"&num={config.msgPerReq}&if_time_desc={int(not config.ascending)}&token={config.token}"
+          f"&num={config.msgPerReq}&if_time_desc={int(not config.ascending)}&token={quote(config.token, safe='')}"
     return _request('get', 'json', 'getIM', url, config=config)['data']['message_list']
 
 
@@ -70,7 +71,7 @@ def getModeration(offset: int = 0, config: Config = None) -> list[dict]:
     """获取审核日志。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/moderation/logs?offset={offset}&num={config.modLogPerReq}&token={config.token}"
+    url = f"https://{config.APIBase}api/moderation/logs?offset={offset}&num={config.msgPerReq}&token={quote(config.token, safe='')}"
     return _request('get', 'json', 'getModeration', url, config=config)['data']['logs']
 
 
@@ -88,7 +89,7 @@ def getCommentReplies(offset: int = 0, num: int = 20, config: Config = None) -> 
     """获取｢评论我的｣消息。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f'https://{config.APIBase}api/im/comment-replies?offset={offset}&num={num}&token={config.token}'
+    url = f'https://{config.APIBase}api/im/comment-replies?offset={offset}&num={num}&token={quote(config.token, safe="")}'
     return _request('get', 'json', 'getCommentReplies', url, config=config)['data']['list']
 
 

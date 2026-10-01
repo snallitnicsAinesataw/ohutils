@@ -12,6 +12,7 @@ import struct
 from requests import Response, RequestException
 import os
 import zlib
+import random
 
 _DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = \
     {DANMAKU_SCROLL: 'scroll', DANMAKU_TOP: 'top', DANMAKU_BOTTOM: 'bottom'}

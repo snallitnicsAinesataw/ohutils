@@ -2,7 +2,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime
-from typing import TypeVar, Generic, List, Union, Literal, Callable, Optional
+from typing import TypeVar, Generic, List, Union, Literal, Callable, Optional, Generator
 import inspect
 import os
 import sys
@@ -14,7 +14,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
-from .config import Config, getGlobalConfig, setGlobalConfig
+from .config import Config, getGlobalConfig, setGlobalConfig, _getIConfig
 from contextlib import contextmanager
 from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
@@ -107,7 +107,7 @@ class VideoEntry:
     title: str
     intro: str
     staffs: list[Staff]
-    danmaku: list[Danmaku]
+    danmaku: list[Danmaku] = field(repr=False)
     comments: list[Comment['VideoEntry']]
     is_gore: bool
 
@@ -119,7 +119,7 @@ class VideoEntry:
     def extractCover(self) -> bytes:
         return self._cover
 
-    def extractVideo(self, chunk_size: int = 8192):
+    def _extractVideo(self, chunk_size: int = 8192):
         with open(self._video_fp, 'rb') as f:
             f.seek(self._video_offset)
             remaining = self._video_size
@@ -129,6 +129,15 @@ class VideoEntry:
                     break
                 remaining -= len(chunk)
                 yield chunk
+
+    def extractVideo(self, fp: str = None, chunk_size: int = 8192) -> Optional[Generator[bytes, None, None]]:
+        """提取视频。提供fp以保存至文件。"""
+        if fp is None:
+            return self._extractVideo(chunk_size)
+        else:
+            with open(fp, 'wb') as f:
+                for chunk in self._extractVideo(chunk_size):
+                    f.write(chunk)
 
 
 def parseTime(time_str: str) -> int:
@@ -407,10 +416,12 @@ def useConfig(config: Config):
     此函数的优先级低于在函数调用时显式传递的config=...参数，但高于setGlobalConfig(...)。"""
     orig_cfg = getGlobalConfig()
     setGlobalConfig(config)
+    _getIConfig().in_use_config = True
     try:
         yield config
     finally:
         setGlobalConfig(orig_cfg)  # 恢复配置
+        _getIConfig().in_use_config = False
 
 
 def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Optional[int]]],
@@ -473,6 +484,12 @@ def _temp_name(name: str) -> str:
 
 def _fn_formatTime(ts: int) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y%m%d_%H%M%S")
+
+
+def _fn_2hms(dur: int) -> str:
+    h, rem = divmod(dur, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h}h{m:02d}m{s:02d}s"
 
 
 def _iter_chunks(stream, chunk_size=8192):

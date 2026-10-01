@@ -8,6 +8,7 @@ class _IConfig:
     # 内部配置，存一些不需要暴露的字段。以及它包含全局Config()。
     # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
     def __init__(self):
+        self.in_use_config = False
         self.curr_cfg = Config()
 
 
@@ -35,12 +36,9 @@ class Config:
     useStartEnd: bool = False
 
     commentPerReq: int = 12
-    subCommentPerReq: int = 6
     blogPerReq: int = 12
     channelsPerReq: int = 12
-    managePerReq: int = 12
     msgPerReq: int = 50
-    modLogPerReq: int = 20
     videoPerReq: int = 20
     tagsPerReq: int = 12
     seigaPerReq: int = 20
@@ -63,10 +61,8 @@ class Config:
     mediaPath: str = "D:\\_ARCHIVE\\MEDIA\\"
     mediaName: str = "m_id{m_id}.{ext}"
     videoPath: str = "D:\\_ARCHIVE\\VIDEO\\"
-    videoName: str = "ov{vid}_ou{uid}.mp4"
-
+    videoName: str = "{vid}_ou{uid}.mp4"
     SQLName: str = "ohutils.db"
-    useSQL: bool = False
 
     chunkPath: str = 'D:\\_ARCHIVE\\DISP\\'  # should be .\
     blogChunkName: str = "chk_{start}_{end}_fl-{flag}.obchk"
@@ -78,7 +74,7 @@ class Config:
 
     stageDelay: tuple[float, float] = (1.0, 1.0)
     pagingDelay: tuple[float, float] = (0.4, 0.8)
-    retryDelay: tuple[float, float] = (0.7, 1.1)
+    retryDelay: tuple[float, float] = (1.0, 3.0)
 
     richLog: bool = True
 
@@ -112,14 +108,14 @@ class Config:
 _DEFAULT_CONFIG = _IConfig()
 
 
+def _getIConfig() -> _IConfig:
+    return _DEFAULT_CONFIG
+
+
 def setGlobalConfig(config: Config):
-    _DEFAULT_CONFIG.curr_cfg = config
+    if not _DEFAULT_CONFIG.in_use_config:
+        _DEFAULT_CONFIG.curr_cfg = config
 
 
 def getGlobalConfig() -> Config:
     return _DEFAULT_CONFIG.curr_cfg
-
-
-def _getIConfig() -> _IConfig:
-    return _DEFAULT_CONFIG
-

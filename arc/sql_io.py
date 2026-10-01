@@ -42,6 +42,7 @@ class _MT(IntEnum):
     CHANNEL_NOTICE = 21
     VIDEO_STAFF = 22
     DANMAKU = 23
+    CHANNEL_PIN = 24
 
 
 @dataclass(frozen=True)
@@ -109,6 +110,8 @@ _MAP = {
     PRIMARY KEY (vid, uid)''', '(vid, uid)'),
     _MT.DANMAKU: ('oh_danmaku_v1', '''danmaku_id INTEGER PRIMARY KEY NOT NULL, vid INTEGER, text TEXT, time_ms INTEGER, 
     mode TEXT, color_rgb INTEGER, font_size INTEGER, render INTEGER''', 'danmaku_id'),
+    _MT.CHANNEL_PIN: ('oh_channel_pin_v1', '''pin_id INTEGER PRIMARY KEY NOT NULL, cid INTEGER, type TEXT,
+    content_id INTEGER, sort_order INTEGER, arc_ts INTEGER''', 'pin_id'),
 }
 ##########################################################################################
 # {api_k: str -> tuple[db_k: str, factory: callable]}
@@ -192,6 +195,8 @@ _MAP_C_NOTICE = {'channel_id': ('cid', int), 'notice_id': ('notice_id', int), 't
 _MAP_DANMAKU = {'danmaku_id': ('danmaku_id', None), 'text': ('text', None), 'time_ms': ('time_ms', None),
                 'mode': ('mode', None), 'color_rgb': ('color_rgb', None), 'font_size': ('font_size', None),
                 'render': ('render', lambda x: x if x else None)}
+_MAP_CHANNEL_PIN_API = {'pin_id': ('pin_id', int), 'type': ('type', None), 'content_id': ('content_id', int),
+                    'sort_order': ('sort_order', int)}
 #########################################################################################
 # map_type: int -> map: dict
 # sql_type集合是map_type集合的真子集。
@@ -209,6 +214,7 @@ _META_MAP = {
     _MT.VIDEO: _MAP_VIDEO_API,
     _MT.MEDIA: _MAP_MEDIA_API,
     _MT.CHANNEL: _MAP_CHANNEL_API, _MT.CHANNEL_NOTICE: _MAP_C_NOTICE, _MT.CHANNEL_SECTION: _MAP_C_SECTION,
+    _MT.CHANNEL_PIN: _MAP_CHANNEL_PIN_API,
     _MT.DANMAKU: _MAP_DANMAKU,
 }
 #########################################################################################
@@ -412,6 +418,17 @@ def channelNotice2DB(data) -> tuple[_SQLBatch]:
     return _SQLBatch(_MT.CHANNEL_NOTICE, [mapped]),
 
 
+def channelPin2DB(data: list[dict], from_id: int = 0) -> tuple[_SQLBatch]:
+    """提供from_id: int以向表中存储评论所在的cid。"""
+    result = []
+    for pin in data:
+        mapped = _process(pin, _MT.CHANNEL_PIN)
+        mapped['cid'] = from_id
+        mapped['arc_ts'] = int(time())
+        result.append(mapped)
+    return _SQLBatch(_MT.CHANNEL_PIN, result),
+
+
 def danmaku2DB(data: Union[Danmaku, list[Danmaku]], from_id: int = 0) -> tuple[_SQLBatch]:
     """映射Danmaku类至oh_danmaku。
     提供from_id: int以向表中存储评论所在的vid。"""
@@ -449,6 +466,8 @@ def auto2DB(data, **kwargs):
             return commentRaw2DB(data, **kwargs)
         if 'follow_status' in data[0]:
             return following2DB(data, **kwargs)
+        if 'pin_id' in data[0]:
+            return channelPin2DB(data, **kwargs)
     if isinstance(data, dict):
         if 'bid' in data and 'title' in data:
             return blog2DB(data)  # blog2DB的dict式

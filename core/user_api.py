@@ -4,6 +4,7 @@ from .exception import OttoBaseException
 from .config import Config, getGlobalConfig
 from .exception import UIDError
 import time
+from urllib.parse import quote
 
 
 ###################################################
@@ -30,8 +31,8 @@ def _getFollowingsList(uid: int, offset: int, config: Config) -> list[dict]:
 @startEnd
 def _getFavBlogs(offset: int, config: Config) -> dict:
     """获取一组收藏的动态(不递归)。需要token。"""
-    url = f"https://{config.APIBase}api/blog/favorite-list?num={config.managePerReq}&offset={offset}" \
-          f"&_t={int(time.time())}&token={config.token}"
+    url = f"https://{config.APIBase}api/blog/favorite-list?num={config.blogPerReq}&offset={offset}" \
+          f"&_t={int(time.time())}&token={quote(config.token, safe='')}"
     return _request('get', 'json', "_getFavBlogs", url, config=config)
 
 
@@ -87,13 +88,13 @@ def isUserAlive(uid: int, config: Config = None) -> bool:
         return False
 
 
-def findLatestUser(max_n: int = 10 ** 6, config: Config = None) -> int:
-    """通过二分法寻找最后注册的uid。max_n为二分上界。"""
+def findLatestUser(min_n: int = 0, max_n: int = 10 ** 6, config: Config = None) -> int:
+    """通过二分法寻找最后注册的uid。min_n、max_n分别为二分下、上界。"""
     died = [122, 343, 891, 1947, 5365, 5862, 6361, 6496, 6760, 7856, 8664, 8958, 9733, 10414, 10417, 12801, 13488,
             15689, 17152, 19215, 19325, 20081, 20260, 22522, 23188, 23596]  # 数据来自28Ciry(ob53116)
     if config is None:
         config = getGlobalConfig()
-    lo, hi = 0, max_n
+    lo, hi = min_n, max_n
     while lo < hi:
         mid = (lo + hi) // 2
         if config.verbose:
@@ -110,7 +111,7 @@ def isAudit(config: Config = None) -> bool:
     """测试config.token对应用户是否为审核。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/profile/is-audit?token={config.token}"
+    url = f"https://{config.APIBase}api/profile/is-audit?token={quote(config.token, safe='')}"
     return bool(_request('get', 'json', 'isAudit', url, config=config)['data']['is_audit'])
 
 
@@ -154,5 +155,5 @@ def getAllFavBlogs(config: Config = None) -> list[int]:
         return inner.get('blog_list', []), inner.get('favorite_blog_count')
 
     all_blogs = _recur_request('getAllFavBlogs', _fetch,
-                               config.managePerReq, config.pagingDelay, config=config)
+                               config.blogPerReq, config.pagingDelay, config=config)
     return [b['bid'] for b in all_blogs]

@@ -7,7 +7,7 @@
 
 获取聊天室所需要的`chat_token`。
 
- - **参数**: *可选* `config` -> Config对象。需要在对象中包含有效`token`。不提供则使用全局配置或`useConfig(...)`设定的配置。
+ - **参数**: *可选* `config` -> Config对象。需要在对象中包含有效`token`。
  - **返回**: `chat_token` (e.g. `'f339af2b...50a5'`)。
 
 ## 2.1.2 me() 🔑
@@ -26,7 +26,7 @@
 
 获取聊天室消息和公告。在`config.alwaysUseToken=True`时，会发送请求以获得`chat_token`。
 
- - **参数**: *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
+ - **参数**: *可选* `config` -> Config对象。
  - **返回**: 字典。
    - `{room: str, pinned_announcement: dict, message_list: list[dict]}`
    - **pinned_announcement**: `{room: str, content: str, pinned: bool, updated_by: int, updated_at: time_str}`。
@@ -42,7 +42,7 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 
  - **参数**: 
    - *可选* `room` -> 房间名。默认为`main`，对应[主聊天室](https://www.ottohub.cn/chat/) 。
-   - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。在`guest`为`False`时需要有效的`token`。
+   - *可选* `config` -> Config对象。在`guest`为`False`时需要有效的`token`。
    - *可选* `threaded` -> 是否开启新线程运行客户端。默认为`True`。
     否则返回`ChatClient`实例，此时需要手动调用`client.run_forever()`以运行客户端。
    - *可选* `beat_interval` -> 发送ping包的时间间隔。默认为30，单位：**秒**。
@@ -132,6 +132,6 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 
 - **通用参数**:
    - `chat_token: str` -> 聊天室token。
-   - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
+   - *可选* `config` -> Config对象。
    - 其它参数定义见2.1.5.3，2.1.5.4，2.1.5.5。
    
