@@ -66,20 +66,20 @@ OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`�
 **例子：**
 
 verbose=False, useStartEnd=True:
-```
+```text
 [13:16:45.460 D][getVideoDetail]start
 [13:16:45.705 D][getVideoDetail]end
 ```
 
 verbose=True, useStartEnd=False:
-```
+```text
 [13:25:49.450 I][_saveVideo/v1]Get metadata of ov1...
 [13:25:49.450 I][getVideoDetail]get https://api.ottohub.cn/api/video/1
 [13:25:50.745 I][_saveVideo/v1]Get comments of ov1...
 ```
 
 verbose=useStartEnd=True:
-```
+```text
 [14:12:40.850 D][getVideoDetail]start with args vid=12306, config=None
 [14:12:40.850 I][getVideoDetail]get https://api.ottohub.cn/api/video/12306
 [14:12:41.115 D][getVideoDetail]end with return {'vid': '12306', 'uid': '...
@@ -185,7 +185,7 @@ verbose=useStartEnd=True:
 ### 1.3.1.16 chunkSize
 `chunkSize: int = 8192`
 
-块大小。单位：`字节`。使用于`downloadVideo()`、`downloadMedia()`。
+块大小。单位：**字节**。使用于`downloadVideo()`、`downloadMedia()`。
 
 ### 1.3.1.17 fromDict()
 `@classmethod fromDict(cls, d: dict) -> Config`

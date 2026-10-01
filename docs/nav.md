@@ -14,7 +14,8 @@
 
 所有的`time_str`结构为`YYYY-MM-DD HH:MM:SS`，可以使用`parseTime`处理为时间戳。
 ## 1. 使用方法
-TODO
+[1.3 Config](config.md)
+
 ## 2. 文档
 [2.1 聊天室API](chat.md)
 
