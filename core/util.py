@@ -355,7 +355,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
     _raise_exhaust(retries, url, f_name, config)  # 末尾raise
 
 
-def flattenComments(recur_list: list[Comment]) -> list[Comment]:
+def flattenComments(recur_list: list[Comment[_T]]) -> list[Comment[_T]]:
     """将评论树展平。"""
     res = []
     for c in recur_list:
@@ -462,7 +462,7 @@ def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Opti
 
 def _format(pattern: str, **k):
     return pattern.format(
-        bid=k.get('bid', 'ob0'), sid=k.get('sid', 0), vid=k.get('vid', 0), mid=k.get('mid', 0),
+        bid=k.get('bid', 'ob0'), sid=k.get('sid', 0), vid=k.get('vid', 0), m_id=k.get('m_id', 0),
         ext=k.get('ext', ''), ver=k.get('ver', '0'), toolver=_const._version,
 
         # 请求后才可以知道的字段
@@ -472,6 +472,7 @@ def _format(pattern: str, **k):
         durf=k.get('durf', '000000'),
         pubftime=k.get('pubftime', _const._DEFAULT_FN_TIME),
         pubts=k.get('pubts', _const.DEFAULT_TS),
+        filesize=k.get('filesize', 0)
         # crc32='{crc32}',
         # sha1='{sha1}',
     )

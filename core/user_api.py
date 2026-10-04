@@ -157,3 +157,12 @@ def getAllFavBlogs(config: Config = None) -> list[int]:
     all_blogs = _recur_request('getAllFavBlogs', _fetch,
                                config.blogPerReq, config.pagingDelay, config=config)
     return [b['bid'] for b in all_blogs]
+
+
+def getBlogCollItems(uid: int, coll_name: str, config: Config = None) -> list[dict]:
+    """获取合集内容。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/collection/blogs/collections/items?uid={uid}&collection={quote(coll_name, safe='')}"
+    return _request('get', 'json', 'getBlogCollItems', url, config=config)['blog_list']
+

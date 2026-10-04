@@ -85,10 +85,10 @@ class BlogChunk:
         return res
 
     def __repr__(self):
-        return f"BlogChunk({len(self._index)} entries, {len(self._cache)} cached)"
+        return f"<BlogChunk({len(self._index)} entries, {len(self._cache)} cached)>"
 
     def __str__(self):
-        return f"BlogChunk({len(self._index)} entries, {len(self._cache)} cached)"
+        return f"<BlogChunk({len(self._index)} entries, {len(self._cache)} cached)>"
 
     def clearCache(self, bid: int = None):
         """清空缓存，可以指定bid。"""
@@ -98,8 +98,7 @@ class BlogChunk:
             self._cache.pop(bid, None)
 
 
-def serializeBlog(bid: int, config: Config = None) -> bytes:
-    """将指定bid的.obarc文件序列化。"""
+def _serializeBlog(bid: int, config: Config = None) -> bytes:
     if config is None:
         config = getGlobalConfig()
     with open(os.path.join(config.savePath, config.obarcName.format(bid=bid)), "rb") as fp:
@@ -109,8 +108,7 @@ def serializeBlog(bid: int, config: Config = None) -> bytes:
     return new
 
 
-def deserializeBlog(data: bytes) -> BlogEntry:
-    """反序列化二进制数据。"""
+def _deserializeBlog(data: bytes) -> BlogEntry:
     # 解析头部
     version = data[0]
     flags = data[1]
@@ -164,10 +162,10 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         file = os.path.join(config.savePath, config.obarcName.format(bid=bid))
         if not os.path.exists(file):
             entries.append(0)
-            logger.warning('[buildChunk]' + _c(_YELLOW, 'File does not exist: {file}', config))
+            logger.warning('[buildChunk]' + _c(_YELLOW, f'File does not exist: {file}', config))
             continue
         try:
-            data = serializeBlog(bid)
+            data = _serializeBlog(bid)
             entries.append(current_offset)
 
             if flags[0]:

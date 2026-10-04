@@ -1,9 +1,9 @@
 import random
 import time
-from .util import _request, startEnd, Comment, logger
+from .util import _request, startEnd, Comment, logger, _format, _fn_formatTime, parseTime
 from .config import Config, getGlobalConfig
 from .exception import NotInCollectionError
-from ._const import _RED
+from ._const import _RED, DEFAULT_TS
 import os
 from typing import Literal, Union
 
@@ -52,11 +52,17 @@ def downloadSeiga(sid: int, config: Config = None) -> bool:
     """下载指定sid的静画。"""
     if config is None:
         config = getGlobalConfig()
-    all_seiga: list = getSeigaDetail(sid, config)['pages']
+    seiga: dict = getSeigaDetail(sid, config)
+    all_seiga: list = seiga['pages']
+
+    pub_ts = parseTime(seiga['time']) if seiga['time'] else DEFAULT_TS
     for s in all_seiga:
         pg, url = s['page_no'], s['original_url']
         content = _request('get', 'content', 'downloadSeiga', url, config=config)
-        with open(os.path.join(config.seigaPath, config.seigaName.format(sid=sid, page=pg)), "wb") as f:
+
+        fn = _format(config.seigaPath, sid=sid, page=pg, pubts=pub_ts, pubftime=_fn_formatTime(pub_ts),
+                     uid=int(seiga['uid']))
+        with open(os.path.join(config.seigaPath, fn), "wb") as f:
             f.write(content)
         time.sleep(random.uniform(*config.pagingDelay))
     return True

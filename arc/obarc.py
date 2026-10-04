@@ -429,7 +429,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
                 'favorite_count': int(blog_data.get('favorite_count', old_blog.favorite_count)),
                 'view_count': int(blog_data.get('view_count', old_blog.view_count)),
                 'channel_id': int(blog_data.get('channel_id', old_blog.channel_id)),
-                'time': blog_data.get('time', "2000-1-1 00:00:00"),
+                'time': blog_data.get('time') or formatTime(old_blog.timestamp),
                 'title': blog_data.get('title', old_blog.title),
                 'content': blog_data.get('content', old_blog.content),
                 'blog_type': int(blog_data.get('blog_type', old_blog.blog_type)),

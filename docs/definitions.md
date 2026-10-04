@@ -49,7 +49,7 @@ blog_type INTEGER,    -- 来自API，未知用途作保留。
 comment_count INTEGER,  -- 评论数。
 title TEXT,
 content TEXT,
-tags TEXT,    -- 标签，以","分隔。
+tags TEXT,    -- 标签。
 gore INTEGER   -- 是否为4000+内容。
 );
 ```

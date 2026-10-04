@@ -1,6 +1,7 @@
 import os
-from ..core.util import startEnd, _request, logger
+from ..core.util import startEnd, _request, logger, _fn_formatTime, _temp_name, _format, parseTime
 from ..core.config import Config, getGlobalConfig
+from ..core._const import DEFAULT_TS
 import requests
 
 
@@ -51,15 +52,18 @@ def downloadMedia(m_id: int, config: Config = None):
     """下载素材。"""
     if config is None:
         config = getGlobalConfig()
-    suffix = '.ohu-downloading'
     media = getMediaDetail(m_id, config)
+
+    pub_ts = parseTime(media['created_at']) if media.get('created_at') else DEFAULT_TS
+    fn = _format(config.mediaName, m_id=media["media_id"], ext=media["extension"], uid=media['uid'], pubts=pub_ts,
+                 pubftime=_fn_formatTime(pub_ts), filesize=int(media['file_size']))
+    temp_fn = _temp_name(fn)
+    fp = os.path.join(config.mediaPath, temp_fn)
+    fp_new = os.path.join(config.mediaPath, fn)
+
     resp = _request('get', 'stream', 'downloadMedia', media['file_url'], config=config, stream=True)
-    fp = os.path.join(config.mediaPath, config.mediaName.format(m_id=media["media_id"], ext=media["extension"]) + suffix)
-    fp_new = fp
     with open(fp, "wb") as f:
         for chunk in resp.iter_content(chunk_size=config.chunkSize):
             f.write(chunk)
-    if fp.endswith(suffix):
-        fp_new = fp[:-len(suffix)]
     os.replace(fp, fp_new)
     logger.info(f'[downloadMedia]media downloaded: {fp_new}')

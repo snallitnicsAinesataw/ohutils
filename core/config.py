@@ -50,9 +50,9 @@ class Config:
     indexPath: str = 'E:\\pyfile\\small-projects\\ohutils\\'
     policy: Literal['merge', 'override', 'keep', 'keep_after'] = 'merge'
     obarcName: str = "{bid}"
-    obarcBlobName: str = "ob*"
+    obarcGlobName: str = "ob*"
     ovarcName: str = "{vid}"
-    ovarcBlobName: str = "ov*"
+    ovarcGlobName: str = "ov*"
     indexName: str = "archive_index.json"
     userCommentIdxName: str = "comment_index_user.json"
     OBCCommentIdxName: str = "comment_index_obc.json"
