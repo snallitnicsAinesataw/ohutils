@@ -88,7 +88,7 @@ class ChatClient(websocket.WebSocketApp):
         type_ = data.get('type')
         if type_ == 'pong':
             if not self._pinged:
-                logger.warning('[ChatClient/heartbeat]' + \
+                logger.warning('[ChatClient/heartbeat]' +
                                _c(_YELLOW, "receive pong without ping. This shouldn't happen.", self._config))
             self._pinged = False
         elif type_ == 'welcome':

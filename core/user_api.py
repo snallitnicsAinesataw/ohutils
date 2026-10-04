@@ -160,9 +160,17 @@ def getAllFavBlogs(config: Config = None) -> list[int]:
 
 
 def getBlogCollItems(uid: int, coll_name: str, config: Config = None) -> list[dict]:
-    """获取合集内容。"""
+    """获取动态合集内容。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/collections/items?uid={uid}&collection={quote(coll_name, safe='')}"
     return _request('get', 'json', 'getBlogCollItems', url, config=config)['blog_list']
+
+
+def getVideoCollItems(uid: int, coll_name: str, config: Config = None) -> list[dict]:
+    """获取视频合集内容。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/collection/videos/collections/items?uid={uid}&collection={quote(coll_name, safe='')}"
+    return _request('get', 'json', 'getVideoCollItems', url, config=config)['video_list']
 

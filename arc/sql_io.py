@@ -603,8 +603,8 @@ def init(config: Config = None):
 
 
 def writeSQLA(*items, no_update: bool = False, config: Config = None, **kwargs):
-    """批量写入数据库，自动判断类型。接收来自*2DB的值。其实是for i in items: writeSQL(auto2DB(i))的缩略形式。
-    !!来自不同动态、视频、静画的评论分开调用!!
+    """批量写入数据库，自动判断类型。其实是for i in items: writeSQL(auto2DB(i))的缩略形式。
+    !!来自不同动态、视频、静画的评论分开调用!!  (评论的from_id不同会混)
 
     kwargs:
     main_uid: (仅following)关注者uid。

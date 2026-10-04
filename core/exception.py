@@ -308,6 +308,11 @@ class GoreNotAllowedError(APIError):
     pass  # ｢仅对允许观看此类内容的用户可见｣又是什么话。那谁能看？
 
 
+class InvalidModuleError(APIError):
+    """错误的?module=...参数。此错误不应该发生(旧格式API遗留物)"""
+    pass
+
+
 mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
@@ -376,4 +381,5 @@ mappings = {
     'video_not_in_collection': NotInCollectionError,
     'Not found': APINotFoundError,
     'gore_not_allowed': GoreNotAllowedError,
+    'error_module': InvalidModuleError,
 }
