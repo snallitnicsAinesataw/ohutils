@@ -3,9 +3,9 @@ from setuptools import setup, find_packages
 
 setup(
     name="ohutils",
-    version="0.8.0",
-    packages=find_packages(where="."),
-    package_dir={"": "."},
+    version="0.9.0",
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     install_requires=[
         "requests",
         "cryptography",

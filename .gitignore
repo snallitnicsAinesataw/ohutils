@@ -9,7 +9,7 @@ __pycache__/
 /_temp_user_avatar_ver.json
 /_test.py
 /_side_1.py
-/*.pyc
+*.pyc
 .idea/
 /*.obarc
 /*.obchk
