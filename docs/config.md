@@ -6,16 +6,19 @@
 ohutils的通用配置类，用于管理所有可配置项。为dataclass。各函数若`config`参数为`None`则会使用全局配置(见1.3.2)或`useConfig(...)`(见1.3.3)设定的配置。
 
 ### 1.3.1.1 APIBase, chatAPIBase
+
+> 使用HTTPS。
+
 `APIBase: str = "api.ottohub.cn/"`
 `chatAPIBase: str = "api-chat.ottohub.cn/"`
 
-OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`。如`cfg.APIBase='https://example-proxy.com/ottohub/'` 。
+OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`。如`cfg.APIBase='example-proxy.com/ottohub/'` 。
 
 ### 1.3.1.2 token, alwaysUseToken
 `token: str = field(default_factory=str, repr=False)`
 `alwaysUseToken: bool = False`
 
-`token` -> 访问令牌。需要`token`的API(带有🔑标记)会使用。调用`auth_api.login()`(2.2.1) 可以获取；调用`auth_api.loginAndSetToken()`(2.2.2) 自动更新全局`token`。
+`token` -> 访问令牌。需要`token`的API(带有🔑标记)会使用。调用`auth_api.login()`(见2.2.1) 可以获取；调用`auth_api.loginAndSetToken()`(见2.2.2) 自动更新全局`token`。
 
 **注意：**`token`**不要转义最后的等号至**`%3d` **，内部会quote。**
 
@@ -25,7 +28,7 @@ OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`�
 ### 1.3.1.3 policy
 `policy`控制写`obarc`、`ovarc`时的策略。
 
-> keep策略仅支持{bid}/{vid}、{ver}、{toolver}占位符，出现其它占位符会抛出ValueError。若需使用，请设为keep_after。
+> keep策略仅支持{bid}/{vid}、{ver}、{toolver}占位符(见1.3.4)，出现其它占位符会抛出ValueError。若需使用，请设为keep_after。
 
 > 目前saveVideo()不支持merge策略。
 
@@ -115,26 +118,26 @@ verbose=useStartEnd=True:
 ### 1.3.1.8 *Name
 包含`obarcName, ovarcName, seigaName, mediaName, videoName, SQLName`。
 
-| 项             | 默认值                                 | 解释                    |
-|---------------|-------------------------------------|-----------------------|
-| obarcName     | `{bid}`                             | `.obarc`文件名。支持占位符(见)。 |
-| ovarcName     | `{vid}`                             | `.ovarc`文件名。支持占位符。    |
-| seigaName     | `sid{sid}_p{page}.jpg`              | 下载的静画文件名。支持占位符。       |
-| mediaName     | `m_id{m_id}.{ext}`                  | 素材文件名。支持占位符。          |
-| videoName     | `{vid}_ou{uid}.mp4`                 | 下载的视频文件名。支持占位符。       |
-| SQLName       | `ohutils.db`                        | 导出数据库的文件名。            |
-| blogChunkName | `chk_{start}_{end}_fl-{flag}.obchk` | `.obchk`文件名。          |
+| 项             | 默认值                                 | 解释                         |
+|---------------|-------------------------------------|----------------------------|
+| obarcName     | `{bid}`                             | `.obarc`文件名。支持占位符(见1.3.4)。 |
+| ovarcName     | `{vid}`                             | `.ovarc`文件名。支持占位符。         |
+| seigaName     | `sid{sid}_p{page}.jpg`              | 下载的静画文件名。支持占位符。            |
+| mediaName     | `m_id{m_id}.{ext}`                  | 素材文件名。支持占位符。               |
+| videoName     | `{vid}_ou{uid}.mp4`                 | 下载的视频文件名。支持占位符。            |
+| SQLName       | `ohutils.db`                        | 导出数据库的文件名。                 |
+| blogChunkName | `chk_{start}_{end}_fl-{flag}.obchk` | `.obchk`文件名。               |
 
-### 1.3.1.9 *IdxName, indexName, *BlobName
-包含`indexName, userCommentIdxName, OBCCommentIdxName, obarcBlobName, ovarcBlobName`。
+### 1.3.1.9 *IdxName, indexName, *GlobName
+包含`indexName, userCommentIdxName, OBCCommentIdxName, obarcGlobName, ovarcGlobName`。
 
 | 项                  | 默认值                       | 解释                                 |
 |--------------------|:--------------------------|------------------------------------|
 | indexName          | `.\\`                     | `buildBlogIndex()`生成的动态的索引JSON文件名。 |
 | userCommentIdxName | `comment_index_user.json` | 动态评论的索引JSON文件名。以uid为键。             |
 | OBCCommentIdxName  | `comment_index_obc.json`  | 动态评论的索引JSON文件名。以bcid为键。            |
-| obarcBlobName      | `ob*`                     | glob扫描时使用的通配符。                     |
-| ovarcBlobName      | `ov*`                     | glob扫描时使用的通配符。                     |
+| obarcGlobName      | `ob*`                     | glob扫描时使用的通配符。                     |
+| ovarcGlobName      | `ov*`                     | glob扫描时使用的通配符。                     |
 
 ### 1.3.1.10 *Delay
 包含`stageDelay, pagingDelay, retryDelay`。
@@ -228,6 +231,13 @@ assert cfg.timeout == 30
 
 返回一个替换了指定项、值的`Config`对象。等价于`dataclasses.replace(config, **changes)`。
 
+
+### 1.3.1.20 copy()
+`copy(self) -> Config`
+
+复制一个`Config`对象。等价于`dataclasses.replace(config)`。
+
+
 ---
 ## 1.3.2 setGlobalConfig(), getGlobalConfig()
 `setGlobalConfig(config: Config) -> None` `getGlobalConfig() -> Config`
@@ -257,3 +267,6 @@ with ohutils.useConfig(cfg2):
     ohutils.setGlobalConfig(cfg3)          # 无效
     ohutils.blog_api.getBlogDetail(12306)  # 还是cfg2
 ```
+
+## 1.3.4 占位符
+
