@@ -2,6 +2,7 @@ from .util import startEnd, _request
 from .config import Config, getGlobalConfig
 from typing import Callable
 from getpass import getpass
+from urllib.parse import quote
 
 
 @startEnd(is_auth=True)
@@ -11,9 +12,7 @@ def login(uid_email: str, password: str, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/login/"
-    res = _request('post', 'json', 'login', url, config=config, data={'uid_email': uid_email, "pw": password})
-    del res['status']
-    return res
+    return _request('post', 'json', 'login', url, config=config, data={'uid_email': uid_email, "pw": password})
 
 
 def loginAndSetToken(uid_email: str, password: str, config: Config = None):
@@ -29,7 +28,7 @@ def checkin(config: Config = None) -> bool:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/auth/sign-in/"
-    res = _request('post', 'json', 'checkin', url, config=config, data={"token": config.token})['if_today_first_login']
+    res = _request('post', 'json', 'checkin', url, config=config, data={"token": quote(config.token, safe='')})['if_today_first_login']
     return {'yes': True, 'no': False}[res]
 
 

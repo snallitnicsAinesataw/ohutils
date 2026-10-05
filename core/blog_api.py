@@ -7,6 +7,7 @@ from typing import List, Union
 from ._const import _RED, _YELLOW
 import random
 from urllib.parse import quote
+import json
 
 
 @startEnd
@@ -15,9 +16,7 @@ def getBlogDetail(bid: int, config: Config = None) -> dict:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/{bid}/detail/"
-    res = _request('get', 'json', 'getBlogDetail', url, config=config)
-    del res['status']
-    return res
+    return _request('get', 'json', 'getBlogDetail', url, config=config)
 
 
 @startEnd
@@ -36,7 +35,7 @@ def _getBlogCommentList(bid, parent_bcid: int = 0, offset: int = 0,
     """拉取指定bid的一组评论(不递归)。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}"\
+    url = f"https://{config.APIBase}api/comment/blogs/{bid}?parent_bcid={parent_bcid}&offset={offset}" \
           f"&num={config.commentPerReq}&cid_asc={int(cid_asc)}&include_pinned={int(include_pinned)}"
     return _request('get', 'json', '_getBlogCommentList', url, config=config)['data']['comment_list']
 
@@ -96,13 +95,13 @@ def getAllBlogComments(bid: int, parent_bcid: int = 0,
 
 
 @startEnd
-def sendComment(bid: int, content: str, parent_bcid: int = 0, config: Config = None):
-    """发送指定bid的动态评论。"""
+def sendBlogComment(bid: int, content: str, parent_bcid: int = 0, config: Config = None):
+    """发送指定bid的动态评论。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/comment/blogs/{bid}"
-    data = {"token": config.token, "parent_bcid": str(parent_bcid), "content": content}
-    return _request('post', 'json', "sendComment", url, config=config, data=data)
+    data = {"token": quote(config.token, safe=''), "parent_bcid": str(parent_bcid), "content": content}
+    return _request('post', 'json', "sendBlogComment", url, config=config, data=data)
 
 
 @startEnd
@@ -131,7 +130,7 @@ def toggleBlogLike(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/like/{bid}"
-    return _request('post', 'json', 'toggleBlogLike', url, config=config, data={'token': config.token})['data']
+    return _request('post', 'json', 'toggleBlogLike', url, config=config, data={'token': quote(config.token, safe="")})['data']
 
 
 @startEnd
@@ -140,7 +139,7 @@ def toggleBlogFavorite(bid: int, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/favorite/{bid}"
-    return _request('post', 'json', 'toggleBlogFavorite', url, config=config, data={'token': config.token})['data']
+    return _request('post', 'json', 'toggleBlogFavorite', url, config=config, data={'token': quote(config.token, safe="")})['data']
 
 
 @startEnd
@@ -160,7 +159,7 @@ def editBlog(bid: int, tags: list[str] = None, is_gore: bool = None, config: Con
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/blog/{bid}"
-    data = {'token': config.token}
+    data = {'token': quote(config.token, safe="")}
     if is_gore is not None:
         data['is_gore'] = int(is_gore)
     if tags is not None:
@@ -175,17 +174,55 @@ def getBlogCollection(bid: int, config: Config = None) -> Union[dict, None]:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/blogs/{bid}/collection/"
     try:
-        res = _request('get', 'json', 'getBlogCollection', url, config=config)
-        del res['status']
-        return res
+        return _request('get', 'json', 'getBlogCollection', url, config=config)
     except NotInCollectionError:
         return None
 
 
 @startEnd
 def reportBlog(bid: int, reason: str, config: Config = None):
-    """举报指定bid。"""
+    """举报指定bid。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/moderation/blogs/{bid}/report/"
-    return _request('post', 'json', 'reportBlog', url, config=config, data={"token": config.token, "reason": reason})
+    return _request('post', 'json', 'reportBlog', url, config=config, data={"token": quote(config.token, safe=""), "reason": reason})
+
+
+@startEnd
+def postBlog(title: str, content: str, channel_id: int = 0, channel_only: bool = False,
+             attached_vid: int = 0, forward_bid: int = 0, tags: list[str] = None, is_gore: bool = False,
+             config: Config = None) -> dict:
+    """发布动态。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/blog/submit"
+    data = {
+        'token': quote(config.token, safe=""),
+        'title': title,
+        'content': content,
+        'channel_id': channel_id,
+        'channel_only_visible': int(channel_only),
+        'attached_vid': attached_vid,
+        'forward_bid': forward_bid,
+        'tag': json.dumps(tags or [], ensure_ascii=False),
+        'is_gore': int(is_gore),
+    }
+    return _request('post', 'json', 'postBlog', url, config=config, data=data, is_form=True)
+
+
+@startEnd
+def deleteBlogComment(bcid: int, config: Config = None):
+    """删除指定动态评论。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/comment/blog-comments/{bcid}"
+    return _request('delete', 'json', 'deleteBlogComment', url, config=config, data={"token": quote(config.token, safe="")})
+
+
+@startEnd
+def deleteBlog(bid: int, config: Config = None):
+    """删除指定动态。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}/api/blog/{bid}"
+    return _request('delete', 'json', 'deleteBlog', url, config=config, data={"token": quote(config.token, safe="")})

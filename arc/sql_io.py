@@ -3,19 +3,11 @@ import os
 from typing import Union, Tuple, Generator
 from time import time
 from ..core.config import Config, getGlobalConfig
-from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry, Danmaku, logger, _c
+from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry, Danmaku, logger, _c, _tag_factory
 from ..core._const import _RED
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from contextlib import contextmanager
-
-
-def _tag_factory(tags: list[str]) -> str:
-    try:
-        tags.remove('吉吉国民')
-    except ValueError:
-        pass
-    return ''.join('#' + t for t in tags)
 
 
 class _MT(IntEnum):

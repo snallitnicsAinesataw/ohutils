@@ -197,7 +197,7 @@ def getChatToken(config: Config = None) -> str:
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}api/auth/exchange/"
-    d = _request('post', 'json', 'getChatToken', url, config=config, data={'main_token': config.token}, is_chat=True)
+    d = _request('post', 'json', 'getChatToken', url, config=config, data={'main_token': quote(config.token, safe='')}, is_chat=True)
     return d['data']['chat_token']
 
 

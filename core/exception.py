@@ -208,17 +208,17 @@ class InvalidCategoryError(APIError):
     pass
 
 
-class InvalidFileFormatError(APIError):
+class InvalidFileFormatError(OttoBaseException):
     """非法文件格式"""
     pass
 
 
-class FileTooBigError(APIError):
+class FileTooBigError(OttoBaseException):
     """文件太大"""
     pass
 
 
-class FileNotProvidedError(APIError):
+class FileNotProvidedError(OttoBaseException):
     """缺少文件"""
     pass
 
@@ -313,6 +313,11 @@ class InvalidModuleError(APIError):
     pass
 
 
+class DurationDetectionError(OttoBaseException):
+    """在自动检测视频时长时失败"""
+    pass
+
+
 mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
@@ -375,7 +380,7 @@ mappings = {
     'draft_not_found': DraftNotFoundError,
     'draft_exists': DraftExistsError,
     'index_conflict': IndexConflictError,
-    'not_channel_member': NotChannelMemberError,
+    'not_channel_member': NotChannelMemberError, 'not_member': NotChannelMemberError,
     'Missing_extension_parameter': MissingExtensionParameterError,
     'seiga_not_in_collection': NotInCollectionError, 'blog_not_in_collection': NotInCollectionError,
     'video_not_in_collection': NotInCollectionError,

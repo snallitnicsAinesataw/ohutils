@@ -8,7 +8,7 @@ class _IConfig:
     # 内部配置，存一些不需要暴露的字段。以及它包含全局Config()。
     # 曾经有想过｢啊我把这个参数放在config里吧、啊不放了吧还是｣，但我忘记是什么了。
     def __init__(self):
-        self.in_use_config = False
+        self.config_occupied = False
         self.curr_cfg = Config()
 
 
@@ -104,6 +104,10 @@ class Config:
         """临时替换配置。"""
         return replace(self, **changes)
 
+    def copy(self):
+        """复制配置。"""
+        return replace(self)
+
 
 _DEFAULT_CONFIG = _IConfig()
 
@@ -113,7 +117,7 @@ def _getIConfig() -> _IConfig:
 
 
 def setGlobalConfig(config: Config):
-    if not _DEFAULT_CONFIG.in_use_config:
+    if not _DEFAULT_CONFIG.config_occupied:
         _DEFAULT_CONFIG.curr_cfg = config
 
 

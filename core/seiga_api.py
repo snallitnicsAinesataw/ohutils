@@ -105,9 +105,7 @@ def getSeigaCollection(sid: int, config: Config = None) -> Union[dict, None]:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/seigas/{sid}/collection/"
     try:
-        res = _request('get', 'json', 'getSeigaCollection', url, config=config)
-        del res['status']
-        return res
+        return _request('get', 'json', 'getSeigaCollection', url, config=config)
     except NotInCollectionError:
         return None
 

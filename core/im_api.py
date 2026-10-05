@@ -80,7 +80,7 @@ def sendIM(receiver: int, msg: str, config: Config = None):
     """发送私信至指定uid。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    data = {'token': config.token, 'receiver': receiver, 'message': msg}
+    data = {'token': quote(config.token, safe=''), 'receiver': receiver, 'message': msg}
     return _request('post', 'json', "sendIM", f"https://{config.APIBase}api/im/messages", config=config, data=data)
 
 
@@ -98,5 +98,5 @@ def getMentions(offset: int = 0, num: int = 20, config: Config = None) -> list[d
     """获取｢@我的｣消息。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f'https://{config.APIBase}api/im/mentions?offset={offset}&num={num}&token={config.token}'
+    url = f'https://{config.APIBase}api/im/mentions?offset={offset}&num={num}&token={quote(config.token, safe="")}'
     return _request('get', 'json', 'getMentions', url, config=config)['data']['list']

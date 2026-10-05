@@ -22,6 +22,7 @@ import logging
 from requests import Response
 from . import _const
 import string
+import io
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
@@ -269,60 +270,81 @@ def _raise_exhaust(retries, url, f_name, config):
 
 
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
-             f_name: str, url: str, *, config: Config = None, data: dict = None,
+             f_name: str, url: str, *, config: Config = None, data = None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
-             files: dict = None, no_retry: bool = False, is_video: bool = False,
+             files: dict = None, no_retry: bool = False, is_video: bool = False, is_form: bool = False,
+             content_type: str = None
              ) -> Union[dict, bytes, Response]:
     if config is None:
         config = getGlobalConfig()
     retries = 1 if no_retry else config.retries
     method, return_type = method.lower(), return_type.lower()
     timeout = config.longTimeout if is_long else config.timeout
+
+    if config.alwaysUseToken and not is_chat:
+        # is_chat=True时此配置无效
+        parsed = urlparse(url)
+        query: dict[str, List[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
+        query['token'] = [config.token]
+        new_query = urlencode(query, doseq=True)
+        url = urlunparse(parsed._replace(query=new_query))
+
     for attempt in range(retries):
         try:
-            if config.alwaysUseToken and not is_chat:
-                # is_chat=True时此配置无效
-                parsed = urlparse(url)
-                query: dict[str, List[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
-                query['token'] = [config.token]
-                new_query = urlencode(query, doseq=True)
-                url = urlunparse(parsed._replace(query=new_query))
+            if isinstance(data, io.IOBase) and attempt > 0:
+                try:
+                    data.seek(0)
+                except (OSError, io.UnsupportedOperation):
+                    # 不可seek且重试 -> 重试牛魔
+                    raise
             if config.verbose:
-                logger.info(f"[{f_name}]{method} {_c(_const._GRAY, url.split('token=')[0].strip('&?'), config)}")
+                t_url = url.split('token=')[0].strip('&?')
+                t_cutted = t_url[:100]
+                logger.info(f"[{f_name}]{method} {_c(_const._GRAY, t_cutted + ('...' if t_cutted != t_url else ''), config)}")
 
             headers = dict(config.headers)
-            headers['User-Agent'] = headers['User-Agent']  # + ' OHUtils/0.9.0'  # 水印，大概
+            headers.setdefault('User-Agent', 'OHUtils/0.9.0')   # 水印，大概
             if is_video:
                 headers['Range'] = 'bytes=0-'
             if chat_token is not None:
                 headers['Authorization'] = 'Bearer ' + chat_token
-            if files:
+            if content_type is not None:
+                headers['Content-Type'] = content_type
+            if files and content_type is None:
                 headers.pop('Content-Type', None)  # 交给requests自己生成boundary
 
             if method == 'get':
                 resp = requests.get(url, timeout=timeout, headers=headers, stream=stream)
             elif method == 'post' and not files:
-                resp = requests.post(url, timeout=timeout, headers=headers, json=data)
+                if is_form:
+                    resp = requests.post(url, timeout=timeout, headers=headers, data=data)
+                else:
+                    resp = requests.post(url, timeout=timeout, headers=headers, json=data)
             elif method == 'post' and files:
                 resp = requests.post(url, timeout=timeout, headers=headers, files=files, data=data)
             elif method == 'put':
-                resp = requests.put(url, timeout=timeout, headers=headers, data=data)
+                if is_form:
+                    resp = requests.put(url, timeout=timeout, headers=headers, data=data)
+                else:
+                    resp = requests.put(url, timeout=timeout, headers=headers, json=data)
             elif method == 'delete':
-                resp = requests.delete(url, timeout=timeout, headers=headers)
+                resp = requests.delete(url, timeout=timeout, headers=headers, json=data)
             else:
                 raise ValueError('不支持的method: ' + method)
             resp.raise_for_status()
 
-            if return_type == 'json':
+            if return_type == 'stream' or stream:
+                return resp
+            elif return_type == 'json':
                 jsoned = resp.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
                     raise mappings.get(msg, APIError)(msg)
+                if isinstance(jsoned, dict):
+                    jsoned.pop('status', None)
                 return jsoned
             elif return_type == 'content':
                 return resp.content
-            elif return_type == 'stream' or stream:
-                return resp
 
         except requests.HTTPError as e:
             # 发生HTTP错误
@@ -392,36 +414,38 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
 
 @contextmanager
 def appSim(config: Config = None):
-    """模拟由STCaoMei(ou5558)开发的OTTOHub App。"""
+    """模拟由STCaoMei(ou5558)开发的OTTOHub App。不能嵌套。"""
     if config is None:
         config = getGlobalConfig()
-    # 保存原始配置
-    orig_headers = config.headers.copy()
-    orig_token = config.alwaysUseToken
-    # 应用模拟配置
-    config.headers['User-Agent'] = 'Dart/3.12 (dart:io)'
-    config.alwaysUseToken = True
-    setGlobalConfig(config)
+
+    original = config
+    sim_config = config.copy()
+    sim_config.headers = config.headers.copy()
+    sim_config.headers['User-Agent'] = 'Dart/3.12 (dart:io)'
+    sim_config.alwaysUseToken = True
+
+    ic = _getIConfig()
+    setGlobalConfig(sim_config)
+    ic.config_occupied = True
     try:
-        yield config
+        yield sim_config
     finally:
-        # 恢复配置
-        config.headers = orig_headers
-        config.alwaysUseToken = orig_token
+        ic.config_occupied = False
+        setGlobalConfig(original)
 
 
 @contextmanager
 def useConfig(config: Config):
-    """使用给定的config。
+    """使用给定的config。不能嵌套。
     此函数的优先级低于在函数调用时显式传递的config=...参数，但高于setGlobalConfig(...)。"""
     orig_cfg = getGlobalConfig()
     setGlobalConfig(config)
-    _getIConfig().in_use_config = True
+    _getIConfig().config_occupied = True
     try:
         yield config
     finally:
+        _getIConfig().config_occupied = False
         setGlobalConfig(orig_cfg)  # 恢复配置
-        _getIConfig().in_use_config = False
 
 
 def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Optional[int]]],
@@ -500,3 +524,11 @@ def _iter_chunks(stream, chunk_size=8192):
     else:  # Response
         for chunk_ in stream.iter_content(chunk_size):
             if chunk_: yield chunk_
+
+
+def _tag_factory(tags: list[str]) -> str:
+    try:
+        tags.remove('吉吉国民')
+    except ValueError:
+        pass
+    return "#" + "#".join(str(t) for t in tags)

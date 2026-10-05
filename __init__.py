@@ -2,7 +2,7 @@ from . import arc
 from .arc import sql_io as sql
 from .core import *
 from .core.util import (
-    Comment, BlogEntry, Danmaku, VideoEntry,
+    Comment, BlogEntry, Danmaku, VideoEntry, Staff,
     parseTime, formatTime,
     startEnd,
     genKey, encrypt, decrypt,

@@ -159,6 +159,7 @@ def getAllFavBlogs(config: Config = None) -> list[int]:
     return [b['bid'] for b in all_blogs]
 
 
+@startEnd
 def getBlogCollItems(uid: int, coll_name: str, config: Config = None) -> list[dict]:
     """获取动态合集内容。"""
     if config is None:
@@ -167,10 +168,20 @@ def getBlogCollItems(uid: int, coll_name: str, config: Config = None) -> list[di
     return _request('get', 'json', 'getBlogCollItems', url, config=config)['blog_list']
 
 
+@startEnd
 def getVideoCollItems(uid: int, coll_name: str, config: Config = None) -> list[dict]:
     """获取视频合集内容。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/collection/videos/collections/items?uid={uid}&collection={quote(coll_name, safe='')}"
     return _request('get', 'json', 'getVideoCollItems', url, config=config)['video_list']
+
+
+@startEnd
+def getProfile(config: Config = None) -> dict:
+    """获取指定token的信息。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://api.ottohub.cn/api/profile?token={quote(config.token, safe='')}"
+    return _request('get', 'json', 'getProfile', url, config=config)['data']
 

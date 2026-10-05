@@ -2,6 +2,7 @@ from .util import _request, startEnd, _recur_request
 from .config import Config, getGlobalConfig
 from typing import Literal
 from ._const import MAX_LIMIT
+from urllib.parse import quote
 
 
 @startEnd
@@ -17,10 +18,12 @@ def getAllRecChannels(config: Config = None) -> list[dict]:
     """获取所有推荐的频道。"""
     if config is None:
         config = getGlobalConfig()
+
     def _fetch(page):
         resp = getRecChannels(page, config)
         pg = resp.get('pagination', {})
-        return resp.get('channels', []), pg.get('total')   # 总条数
+        return resp.get('channels', []), pg.get('total')  # 总条数
+
     return _recur_request('getAllRecChannels', _fetch, config.channelsPerReq,
                           config.pagingDelay, is_page=True, config=config)
 
@@ -67,10 +70,12 @@ def getAllChannelContents(cid: int, type_: Literal['all', 'blog', 'video'] = 'al
                           section_id: int = None, config: Config = None) -> list[dict]:
     """获取特定频道的所有内容。提供section_is以获取特定分区的内容。
     type_支持的常量: ohutils.CT_*；使用config.blogPerReq。"""
+
     def _fetch(page):
         resp = _getChannelContents(cid, type_, page, section_id, config)
         pg = resp.get('pagination', {})
         return resp.get('content', []), pg.get('total')  # 总条数
+
     return _recur_request('getChannelContents', _fetch, config.blogPerReq,
                           config.pagingDelay, is_page=True, config=config)
 
@@ -83,3 +88,39 @@ def getChannelPins(cid: int, config: Config = None) -> list[dict]:
     url = f"https://{config.APIBase}api/channel/{cid}/pins?order={'asc' if config.ascending else 'desc'}" \
           f"&limit={MAX_LIMIT}"
     return _request('get', 'json', 'getChannelPins', url, config=config)['data']['pins']
+
+
+@startEnd
+def joinChannel(cid, config: Config = None):
+    """加入频道。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/channel/{cid}/members"
+    return _request('post', 'json', 'joinChannel', url, config=config, data={'token': quote(config.token, safe="")})['data']
+
+
+@startEnd
+def quitChannel(cid, config: Config = None):
+    """退出频道。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/channel/{cid}/members/me?token={quote(config.token, safe='')}"
+    return _request('delete', 'json', 'quitChannel', url, config=config)
+
+
+@startEnd
+def followChannel(cid, config: Config = None):
+    """关注频道。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/channel/{cid}/follow"
+    return _request('post', 'json', 'followChannel', url, config=config, data={'token': quote(config.token, safe='')})['data']
+
+
+@startEnd
+def unfollowChannel(cid, config: Config = None):
+    """取消订阅频道。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    url = f"https://{config.APIBase}api/channel/{cid}/members/me?token={quote(config.token, safe='')}"
+    return _request('delete', 'json', 'quitChannel', url, config=config)

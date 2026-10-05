@@ -3,6 +3,7 @@ from .config import Config, getGlobalConfig
 import mimetypes
 import os
 import requests
+from urllib.parse import quote
 
 
 @startEnd
@@ -61,6 +62,6 @@ def uploadImage(file_path: str, config: Config = None) -> dict:
         mime_type = 'application/octet-stream'
     with open(file_path, 'rb') as f:
         files = {'file_img': (os.path.basename(file_path), f, mime_type)}
-        data = {'token': config.token}
+        data = {'token': quote(config.token, safe='')}
         return _request('post', 'json', 'uploadImage', url,
                         config=config, is_long=True, is_chat=True, files=files, data=data, no_retry=True)

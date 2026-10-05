@@ -8,7 +8,10 @@ setup(
     package_dir={"": "."},
     install_requires=[
         "requests",
-        "cryptography"
+        "cryptography",
     ],
+    extras_require={
+        "video": ["imageio-ffmpeg"],
+    },
     python_requires=">=3.8",
 )
