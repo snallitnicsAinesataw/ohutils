@@ -4,7 +4,7 @@ from typing import Union, Tuple, Generator
 from time import time
 from ..core.config import Config, getGlobalConfig
 from ..core.util import parseTime, _request, startEnd, BlogEntry, flattenComments, Comment, VideoEntry, Danmaku, logger, _c, _tag_factory
-from ..core._const import _RED
+from ..core._const import _RED, F_FORWARD_DIED, F_GORE
 from dataclasses import asdict, dataclass
 from enum import IntEnum
 from contextlib import contextmanager
@@ -127,14 +127,14 @@ _MAP_BLOG_API = {'bid': ('bid', int), 'uid': ('uid', int), 'time': ('pub_ts', pa
 _MAP_OBC_API = {'bcid': ('bcid', int), 'uid': ('uid', int), 'parent_bcid': ('parent_bcid', int),
                 'time': ('pub_ts', parseTime), 'content': ('content', None), 'child_comment_num': ('reply_count', int),
                 'pin_order': ('pin_order', int)}
+# _MAP_BLOG_ENTRY特殊处理flags。
 _MAP_BLOG_ENTRY = {'bid': ('bid', int), 'uid': ('uid', int), 'timestamp': ('pub_ts', None),
                    'like_count': ('like_count', int),
                    'favorite_count': ('fav_count', int), 'view_count': ('view_count', int),
                    'attached_vid': ('attached_vid', int),
                    'copyright_type': ('copyright_type', int), 'blog_type': ('blog_type', int),
                    'title': ('title', None), 'content': ('content', None), 'tags': ('tags', _tag_factory),
-                   'arc_time': ('arc_ts', None), 'channel_id': ('channel', None), 'is_gore': ('gore', int),
-                   'forward_bid': ('forward_bid', None), 'is_unavailable': ('forward_died', int)}
+                   'arc_time': ('arc_ts', None), 'channel_id': ('channel', None), 'forward_bid': ('forward_bid', None)}
 # Comment类没有bid/vid/sid字段。
 _MAP_OBC = {'cid': ('bcid', None), 'uid': ('uid', None), 'timestamp': ('pub_ts', None), 'content': ('content', None),
             'reply_count': ('reply_count', None), 'pin_order': ('pin_order', None), 'parent_cid': ('parent_bcid', None)}
@@ -243,6 +243,8 @@ def blog2DB(data: Union[dict, BlogEntry], **_) -> tuple[_SQLBatch]:
     if isinstance(data, BlogEntry):
         data = data.toDictShallow()
         mapped = _process(data, _MT.M_BLOG_ENTRY)  # 4
+        mapped['forward_died'] = data.flags & F_FORWARD_DIED
+        mapped['gore'] = data.flags & F_GORE
         mapped['comment_count'] = len(flattenComments(data['comments']))
     else:
         mapped = _process(data, _MT.BLOG)  # 2

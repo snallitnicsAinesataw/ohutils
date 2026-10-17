@@ -23,6 +23,7 @@ from requests import Response
 from . import _const
 import string
 import io
+import zlib
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
@@ -68,13 +69,12 @@ class BlogEntry:
     content: str
     comments: List[Comment['BlogEntry']]
 
+    flags: int = 64
     blog_type: int = 0
     tags: list[str] = field(default_factory=list)
     copyright_type: int = 0
-    is_gore: bool = False
     attached_vid: int = 0
     forward_bid: int = 0
-    is_unavailable: bool = False
 
     def toDict(self):
         return asdict(self)
@@ -142,8 +142,12 @@ class VideoEntry:
 
 
 def parseTime(time_str: str) -> int:
-    """YYYY-MM-DD HH:MM:SS -> Unix时间戳。"""
-    return int(datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").timestamp())
+    """YYYY-MM-DD HH:MM:SS -> Unix时间戳。
+    解析失败返回DEFAULT_TS。"""
+    try:
+        return int(datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").timestamp())
+    except OSError:
+        return _const.DEFAULT_TS
 
 
 def formatTime(ts: int) -> str:
@@ -410,8 +414,8 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
         blog_type=old.blog_type or new.blog_type,
         tags=list(set(old.tags + new.tags)),  # 合并标签
         copyright_type=old.copyright_type or new.copyright_type,
-        is_gore=old.is_gore or new.is_gore,
-        attached_vid=old.attached_vid or new.attached_vid
+        attached_vid=old.attached_vid or new.attached_vid,
+        flags=(old.flags | new.flags) & (_const.F_GORE | _const.F_FORWARD_DIED | _const.F_MANUAL_BUILD)
     )
 
 

@@ -59,12 +59,14 @@ OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`�
 `verbose: bool = False`
 `useStartEnd: bool = False`
 
-| verbose | useStartEnd | 行为                        |
-|---------|-------------|---------------------------|
-| False   | False       | 不打印任何日志。                  |
-| True    | False       | 打印日志。                     |
-| False   | True        | 只打印start/end。             |
-| True    | True        | 打印日志、start/end包含函数参数和返回值。 |
+| verbose | useStartEnd | 行为                            |
+|---------|-------------|-------------------------------|
+| False   | False       | 不打印任何`DEBUG`和`INFO`级别日志。      |
+| True    | False       | 打印日志。                         |
+| False   | True        | 只打印`start`和`end`。             |
+| True    | True        | 打印日志、`start`和`end`包含函数参数和返回值。 |
+
+**`WARNING`和`ERROR`级别日志永远输出。**
 
 **例子：**
 
@@ -269,4 +271,5 @@ with ohutils.useConfig(cfg2):
 ```
 
 ## 1.3.4 占位符
+TODO
 

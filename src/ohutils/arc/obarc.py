@@ -7,7 +7,7 @@ from ..core.util import (
 from typing import List, Dict, Tuple, TypeVar, Optional, Literal
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
-from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED
+from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED, F_GORE, F_MANUAL_BUILD, F_FORWARD_DIED, F_MULTI_SNAPSHOT
 import struct
 import zlib
 import time
@@ -44,25 +44,13 @@ def _parseComment(c_type: Literal['blog', 'video', 'seiga'], version: int, data:
 
 
 def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: int,
-               pub_ts: int, arc_ts: int, tag_count: int, pswd: bytes = b'') -> tuple[BlogEntry, int]:
+               pub_ts: int, arc_ts: int, tag_count: int) -> tuple[BlogEntry, int]:
     b_type, tags, cr_type, is_gore, attached_vid, forward_bid, is_unavailable = 0, [], 0, False, 0, 0, False
     # PyCharm别扯
     if version <= 3:
         bid, uid, like, fav, view, title_len = struct.unpack_from('<II HHHH', data, offset)
         offset += 16
     else:
-        # ver >= 4
-        # 为.obarc支持F_ENCRYPT_CONTENT作准备。
-        is_gore = flags & 2
-        is_unavailable = flags & 4
-        is_encrypted = flags & 1
-        if is_encrypted:
-            salt = data[offset: offset + 16]
-            offset += 16
-            key, _ = genKey(pswd, salt)
-            data = decrypt(key, data[offset:])
-            offset = 0
-
         bid, uid, like, fav, view = struct.unpack_from('<II HHH', data, offset)
         offset += 14
 
@@ -97,13 +85,13 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
         c, offset = _parseComment('blog', version, data, offset)
         comments.append(c)
     if version >= 6:
-        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
-                         b_type, tags, cr_type, is_gore, attached_vid, forward_bid, is_unavailable), offset
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments, flags,
+                         b_type, tags, cr_type, attached_vid, forward_bid), offset
     elif 4 <= version <= 5:
-        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments,
-                         b_type, tags, cr_type, is_gore, attached_vid), offset
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments, flags,
+                         b_type, tags, cr_type, attached_vid), offset
     else:
-        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments), offset
+        return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments, flags), offset
 
 
 def _writeComment(comment_ver: int, f, comment: Comment):
@@ -142,11 +130,10 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             tags = blog_data.get("tag", [])
             forward = blog_data.get("forward")
             is_unavailable = 0
-            if pub_ts > 0:
-                is_manual = 1
+            is_manual = int(pub_ts > 0)
             if forward is not None:
                 is_unavailable = int(forward.get("is_unavailable"))
-            flag = (blog_data.get("is_gore", 0) << 1) | (is_unavailable << 2) | (is_manual << 6)
+            flag = blog_data.get("is_gore", 0)*F_GORE + is_unavailable*F_FORWARD_DIED + is_manual*F_MANUAL_BUILD
 
         f.write(b'OBARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
@@ -439,13 +426,13 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
                 'favorite_count': int(blog_data.get('favorite_count', old_blog.favorite_count)),
                 'view_count': int(blog_data.get('view_count', old_blog.view_count)),
                 'channel_id': int(blog_data.get('channel_id', old_blog.channel_id)),
-                'ts': -parseTime(blog_data.get('time')) or -old_blog.timestamp,
+                'ts': -parseTime(blog_data.get('time')) or (old_blog.timestamp if old_blog.flags&F_MANUAL_BUILD else -old_blog.timestamp),
                 'title': blog_data.get('title', old_blog.title),
                 'content': blog_data.get('content', old_blog.content),
                 'blog_type': int(blog_data.get('blog_type', old_blog.blog_type)),
                 'tags': list(set(old_blog.tags + blog_data.get('tags', []))),
                 'copyright_type': int(blog_data.get('copyright_type', old_blog.copyright_type)),
-                'is_gore': bool(blog_data.get('is_gore', old_blog.is_gore)),
+                'is_gore': bool(blog_data.get('is_gore', old_blog.flags&F_GORE)),
                 'attached_vid': int(blog_data.get('attached_vid', old_blog.attached_vid))
             }
         merged_comments = mergeComments(old_blog.comments, comments)
