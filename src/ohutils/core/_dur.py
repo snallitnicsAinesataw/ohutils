@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from .exception import FileNotProvidedError, DurationDetectionError
+from .util import logger
 from typing import Union
 
 
@@ -64,6 +65,7 @@ def checkDur(path: Union[str, Path]) -> float:
             return None
 
     for fn in (_via_ffprobe, _via_imageio_ffmpeg, _via_mediainfo, _via_opencv):
+        logger.info(f'[checkDur]trying method: {fn.__name__}')
         val = fn(p)
         if val and val > 0:
             return val

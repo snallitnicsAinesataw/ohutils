@@ -3,7 +3,7 @@ import requests
 from ..core.config import Config, getGlobalConfig
 from ..core.util import (
     Comment, BlogEntry, getVersion, APIError, decrypt, genKey, logger, parseTime, formatTime,
-    _format, _fn_formatTime, _c)
+    _format, _fn_formatTime, _c, _crc)
 from typing import List, Dict, Tuple, TypeVar, Optional, Literal
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
@@ -132,7 +132,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
 
     with open(fp, "wb") as f:
         # ===================文件头 (32字节)===================
-        pub_ts = parseTime(blog_data["time"]) if blog_data.get("time") else DEFAULT_TS
+        pub_ts = blog_data.get("ts", -DEFAULT_TS)
         archive_ts = int(time.time())
         channel_id = blog_data.get("channel_id", 0)
         if version >= 4:
@@ -142,15 +142,17 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             tags = blog_data.get("tag", [])
             forward = blog_data.get("forward")
             is_unavailable = 0
+            if pub_ts > 0:
+                is_manual = 1
             if forward is not None:
-                is_unavailable = forward.get("is_unavailable")
-            flag = (blog_data.get("is_gore", 0) << 1) | is_unavailable << 2
+                is_unavailable = int(forward.get("is_unavailable"))
+            flag = (blog_data.get("is_gore", 0) << 1) | (is_unavailable << 2) | (is_manual << 6)
 
         f.write(b'OBARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
         f.write(struct.pack('<B', flag if version == 4 else 0))  # 1B 标志位
         f.write(struct.pack('<B', 0))  # 1B 保留
-        f.write(struct.pack('<I', pub_ts))  # 4B 原始发布时间
+        f.write(struct.pack('<I', abs(pub_ts)))  # 4B 原始发布时间
         f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
         f.write(struct.pack('<I', 0))  # 4B CRC32（占位）
@@ -195,9 +197,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
 
     with open(fp, "r+b") as f:
         # CRC32和总大小回填
-        f.seek(0x20)
-        all_data = f.read()
-        crc32 = zlib.crc32(all_data) & 0xFFFFFFFF  # 计算 CRC32
+        crc32 = _crc(f, 0x20, file_size)
 
         # 回填总大小(偏移0x10)
         f.seek(0x10)
@@ -270,10 +270,10 @@ def mergeCommentsDeep(old: Comment[_T], new: Comment[_T]) -> Comment[_T]:
     return merged
 
 
-def verifyObarc(filepath: str):
+def verifyObarc(fp: str) -> tuple[bool, str]:
     """验证指定路径的.obarc文件是否合法。"""
-    with open(filepath, "rb") as f:
-        # 读文件头
+    with open(fp, "rb") as f:
+        # 检查文件头
         header = f.read(32)
         if header[:5] != b'OBARC':
             return False, "wrong magic"
@@ -281,18 +281,28 @@ def verifyObarc(filepath: str):
             return False, "wrong header end marker"
         stored_crc = struct.unpack('<I', header[0x18:0x1C])[0]
         stored_size = struct.unpack('<Q', header[0x10:0x18])[0]
-        # 读取数据部分 (从0x20开始到文件尾)
-        data = f.read()
-        calc_crc = zlib.crc32(data) & 0xFFFFFFFF
-        if calc_crc != stored_crc:
-            return False, f"wrong CRC32: stored {stored_crc:08X}, calc {calc_crc:08X}"
         # 检查文件大小
         f.seek(0, 2)
         actual_size = f.tell()
         if actual_size != stored_size:
             return False, f"wrong size: stored {stored_size}, actual {actual_size}"
-        if not data.endswith(_OBARC_END_MARKER):
-            return False, f"wrong file end marker"
+        if actual_size < 32 + len(_OBARC_END_MARKER):
+            return False, "file too small"
+        # 检查尾标记
+        f.seek(-len(_OBARC_END_MARKER), 2)
+        if f.read(len(_OBARC_END_MARKER)) != _OBARC_END_MARKER:
+            return False, "wrong file end marker"
+        # 计算CRC32
+        f.seek(0x20)
+        calc_crc, chunk_ = 0, 1 << 20
+        while True:
+            chunk = f.read(chunk_)
+            if not chunk:
+                break
+            calc_crc = zlib.crc32(chunk, calc_crc)
+        calc_crc &= 0xFFFFFFFF
+        if calc_crc != stored_crc:
+            return False, f"wrong CRC32: stored {stored_crc:08X}, calc {calc_crc:08X}"
         return True, "OK"
 
 
@@ -429,7 +439,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
                 'favorite_count': int(blog_data.get('favorite_count', old_blog.favorite_count)),
                 'view_count': int(blog_data.get('view_count', old_blog.view_count)),
                 'channel_id': int(blog_data.get('channel_id', old_blog.channel_id)),
-                'time': blog_data.get('time') or formatTime(old_blog.timestamp),
+                'ts': -parseTime(blog_data.get('time')) or -old_blog.timestamp,
                 'title': blog_data.get('title', old_blog.title),
                 'content': blog_data.get('content', old_blog.content),
                 'blog_type': int(blog_data.get('blog_type', old_blog.blog_type)),

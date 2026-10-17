@@ -157,6 +157,7 @@ def _c(color: str, str_, c: Config):
 
 def startEnd(func_=None, *, is_auth: bool = False):
     """装饰器。"""
+
     def deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -201,6 +202,7 @@ def startEnd(func_=None, *, is_auth: bool = False):
                         t_ = f"with exception {exc_type.__name__}({exc_value})"
                         logger.debug(f"[{func.__name__}]end {_c(_const._RED, t_, config)}")
                     raise
+
         return wrapper
 
     if func_ is None:
@@ -270,7 +272,7 @@ def _raise_exhaust(retries, url, f_name, config):
 
 
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
-             f_name: str, url: str, *, config: Config = None, data = None,
+             f_name: str, url: str, *, config: Config = None, data=None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
              files: dict = None, no_retry: bool = False, is_video: bool = False, is_form: bool = False,
              content_type: str = None
@@ -300,10 +302,11 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
             if config.verbose:
                 t_url = url.split('token=')[0].strip('&?')
                 t_cutted = t_url[:100]
-                logger.info(f"[{f_name}]{method} {_c(_const._GRAY, t_cutted + ('...' if t_cutted != t_url else ''), config)}")
+                logger.info(
+                    f"[{f_name}]{method} {_c(_const._GRAY, t_cutted + ('...' if t_cutted != t_url else ''), config)}")
 
             headers = dict(config.headers)
-            headers.setdefault('User-Agent', 'OHUtils/0.9.0')   # 水印，大概
+            headers.setdefault('User-Agent', 'OHUtils/0.9.0')  # 水印，大概
             if is_video:
                 headers['Range'] = 'bytes=0-'
             if chat_token is not None:
@@ -468,7 +471,8 @@ def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Opti
             break
         if not items:
             if all_:
-                logger.warning(f"[{f_name}]{_c(_YELLOW, f'end prematurely(empty page), already got {len(all_)} item(s)', config)}")
+                logger.warning(
+                    f"[{f_name}]{_c(_YELLOW, f'end prematurely(empty page), already got {len(all_)} item(s)', config)}")
             break
         all_.extend(items)
         if total is not None:
@@ -532,3 +536,16 @@ def _tag_factory(tags: list[str]) -> str:
     except ValueError:
         pass
     return "#" + "#".join(str(t) for t in tags)
+
+
+def _crc(f, start, end, chunk = 1 << 20):
+    crc = 0
+    f.seek(start)
+    remaining = end - start
+    while remaining > 0:
+        data = f.read(min(chunk, remaining))
+        if not data:
+            raise IOError(f"unexpected EOF: {f.name} at {f.tell()}")
+        crc = zlib.crc32(data, crc)
+        remaining -= len(data)
+    return crc & 0xFFFFFFFF

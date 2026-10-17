@@ -1,5 +1,5 @@
 from ..core.util import Danmaku, Comment, VideoEntry, _request, _temp_name, _iter_chunks, _format, Staff, getVersion, \
-    getGlobalConfig, logger, parseTime, _fn_formatTime, _c
+    getGlobalConfig, logger, parseTime, _fn_formatTime, _c, _crc
 from ..core.config import Config
 from ..core._const import DANMAKU_TOP, DANMAKU_SCROLL, DANMAKU_BOTTOM, _LATEST_OBARC_VER, _OVARC_END_MARKER, \
     _LATEST_OVARC_VER, _YELLOW, _RED, _GRAY
@@ -139,9 +139,7 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
 
     with open(fp, 'r+b') as f:
         # 回填
-        f.seek(0x20)
-        all_data = f.read()
-        crc32 = zlib.crc32(all_data) & 0xFFFFFFFF  # 计算CRC32
+        crc32 = _crc(f, 0x20, file_size)
 
         # 回填总大小(偏移0x10)
         f.seek(0x10)
@@ -371,7 +369,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         return file_path, True
 
     if policy == 'merge':
-        raise NotImplementedError
+        raise NotImplementedError  # 我差不多是知道了。
     return file_path, True
 
 

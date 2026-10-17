@@ -300,7 +300,7 @@ def postDraft(video_path: str, cover_path: str, title: str, intro: str = '', vid
         "video_url": v["path"],
         "duration": int(duration),
         'channel_id': int(channel_id or 0),
-        'staff': list(asdict(s) for s in staffs)
+        'staff': list(asdict(s) for s in staffs) if staffs is not None else []
     }
     if channel_section_id is not None:
         body["channel_section_id"] = int(channel_section_id)

@@ -7,6 +7,7 @@ __pycache__/
 /comment_index_obc.json
 /comment_index_user.json
 /_temp_user_avatar_ver.json
+/_temp_user_avatar_ver.json.tmp
 /_test.py
 /_side_1.py
 *.pyc

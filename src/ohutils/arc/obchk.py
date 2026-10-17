@@ -210,9 +210,7 @@ def buildChunk(start: int, end: int, flags: Union[list[bool], list[int], int] = 
         total_size = f.tell()
 
     with open(filename, "r+b") as f:
-        f.seek(data_bias)
-        all_data = f.read()[:-27]  # exclude pack_time & end marker
-        crc32 = zlib.crc32(all_data) & 0xFFFFFFFF
+        crc32 = _crc(f, data_bias, total_size - len(_OBCHK_END_MARKER) - 4)  # 排除pack_ts和end marker
 
         f.seek(0x0B)  # size偏移
         f.write(struct.pack('<Q', total_size))
