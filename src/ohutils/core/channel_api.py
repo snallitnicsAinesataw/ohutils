@@ -134,18 +134,18 @@ def getAllChannelMembers(cid: int, config: Config = None) -> list[dict]:
 
     def _fetch(page):
         url = f"https://{config.APIBase}api/channel/{cid}/members/?page={page}&limit={config.userPerReq}"
-        # 严格来说这个最大值是100但API不会报错，就这样了
         resp = _request('get', 'json', 'getAllChannelMembers', url, config=config)['data']
         pg = resp.get('pagination', {})
         return resp.get('members', []), pg.get('total')  # 总条数
 
     return _recur_request('getAllChannelMembers', _fetch, config.userPerReq,
-                          config.pagingDelay, is_page=True, config=config)
+                          config.pagingDelay, is_page=True, config=config)  # ROLE_*在返回里用
 
 
 @startEnd
 def createChannel(name: str, disp_name: str, desc: str = None, permission: int = 0, cover_url: str = None, config: Config = None) -> dict:
-    """创建频道。需要token。"""
+    """创建频道。需要token。
+    permission支持的常量：ohutils.PERM_*"""
     if config is None:
         config = getGlobalConfig()
     data = {"token": config.token,

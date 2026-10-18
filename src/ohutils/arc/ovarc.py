@@ -2,7 +2,7 @@ from ..core.util import Danmaku, Comment, VideoEntry, _request, _temp_name, _ite
     getGlobalConfig, logger, parseTime, _fn_formatTime, _c, _crc
 from ..core.config import Config
 from ..core._const import DANMAKU_TOP, DANMAKU_SCROLL, DANMAKU_BOTTOM, _LATEST_OBARC_VER, _OVARC_END_MARKER, \
-    _LATEST_OVARC_VER, _YELLOW, _RED, _GRAY
+    _LATEST_OVARC_VER, _YELLOW, _RED, _GRAY, F_MANUAL_BUILD, F_GORE, F_MULTI_SNAPSHOT
 from ..core.vid_api import getAllDanmaku, getAllVideoComments, getVideoDetail, _downloadVideo
 from ..core.exception import VIDError
 from typing import Literal, Union, Optional
@@ -14,13 +14,11 @@ import os
 import zlib
 import random
 
-_DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = \
-    {DANMAKU_SCROLL: 'scroll', DANMAKU_TOP: 'top', DANMAKU_BOTTOM: 'bottom'}
-_DANMAKU_MAP_INV: dict[Literal['scroll', 'top', 'bottom'], int] = \
-    {'scroll': DANMAKU_SCROLL, 'top': DANMAKU_TOP, 'bottom': DANMAKU_BOTTOM}
+_DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = {DANMAKU_SCROLL: 'scroll', DANMAKU_TOP: 'top', DANMAKU_BOTTOM: 'bottom'}
+_DANMAKU_MAP_INV: dict[Literal['scroll', 'top', 'bottom'], int] = {'scroll': DANMAKU_SCROLL, 'top': DANMAKU_TOP, 'bottom': DANMAKU_BOTTOM}
 
 
-def _parseDanmaku(data: bytes, offset: int) -> tuple[Danmaku, int]:
+def _parseDanmaku(ver: int, data: bytes, offset: int) -> tuple[Danmaku, int]:
     d_id, time_ms, mode, color, f_size, render_len = struct.unpack_from('<IQBIBB', data, offset)
     offset += 19
     render = data[offset:offset + render_len].decode('utf-8')
@@ -34,7 +32,7 @@ def _parseDanmaku(data: bytes, offset: int) -> tuple[Danmaku, int]:
     return Danmaku(d_id, text, time_ms, _DANMAKU_MAP[mode], color, f_size, render), offset
 
 
-def _writeDanmaku(f, danmaku: Danmaku):
+def _writeDanmaku(ver: int, f, danmaku: Danmaku):
     # 写弹幕
     content_bytes = danmaku.text.encode('utf-8')
     render_bytes = danmaku.render.encode('utf-8')
@@ -57,13 +55,14 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
         config = getGlobalConfig()
     with open(fp, 'wb') as f:
         # ===================文件头 (32字节)===================
-        info_ = {}
-        pub_ts = parseTime(video_data["time"]) if video_data.get("time") else DEFAULT_TS
+        info_, flag = {}, 0
+        if version <= 1:
+            pub_ts = parseTime(video_data["time"]) if video_data.get("time") else DEFAULT_TS
         archive_ts = int(time.time())
         channel_id = video_data.get("channel_id", 0)
         is_gore = bool(int(video_data.get('is_gore', 0)))
         tags = video_data.get('tags', [])
-        flag = is_gore << 1
+        flag = (is_gore*F_GORE) | 0
         vid_type = int(video_data.get('type', 0))
         category = int(video_data.get('category', 0))
 
@@ -72,7 +71,11 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
         f.write(struct.pack('<B', flag))  # 1B 标志位
         f.write(struct.pack('<B', (vid_type << 4) | category))  # 1B v_type + category
         f.write(struct.pack('<I', pub_ts))  # 4B 原始发布时间
-        f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
+        if version >= 2:
+            f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
+        else:
+            # snapshot_num 不会写
+            f.write(b'\x00\x00')   # 保留 2B
 
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
         f.write(struct.pack('<I', 0))  # 4B CRC32（占位）
@@ -119,7 +122,7 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
 
         f.write(struct.pack('<I', len(danmaku)))
         for d in danmaku:
-            _writeDanmaku(f, d)
+            _writeDanmaku(version, f, d)
 
         info_['cover'] = f.tell()
         # ===================视频封面===================
@@ -217,7 +220,7 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
         offset += 4
         danmaku = []
         for _ in range(danmaku_count):
-            d, offset = _parseDanmaku(cd_data, offset)
+            d, offset = _parseDanmaku(version, cd_data, offset)
             danmaku.append(d)
 
         # cover

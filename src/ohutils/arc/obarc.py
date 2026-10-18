@@ -402,6 +402,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
             logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
 
     # ===================写文件===================
+    blog_data['ts'] = -parseTime(blog_data['time']) or -DEFAULT_TS
     exist = os.path.exists(file_path)
     if not exist or policy == 'override':
         return _writeObarc(version, bid, blog_data, comments, file_path, config=config), True

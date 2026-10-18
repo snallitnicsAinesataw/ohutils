@@ -9,8 +9,9 @@
  - 我怎么搞不明白这个可见性了。
  - ovarc v2草案III已决定。
  - `ot.user_api.getBlogCollItems(944, 'notexist')`抛ServerError
+ - PERM_NOBODY属性频道不允许channel_only。
  - 
  - 你不应该看到这些。
  - 晚了啊。｢在ou375删掉麦田电台之前｣。
- - ~~安心をしてください、居なくならないでしょう~~
+ -  ~~安心をしてください、居なくならないでしょう~~
 

@@ -1,5 +1,5 @@
 # 常量
-_version = "0.8.0"
+_version = "0.9.0"
 F_ENCRYPT_CONTENT = 1
 F_GORE = 2
 F_FORWARD_DIED = 4
