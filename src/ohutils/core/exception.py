@@ -318,7 +318,7 @@ class DurationDetectionError(OttoBaseException):
     pass
 
 
-mappings = {
+_mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,
     'error_password': WrongPasswordError, 'error_pw': WrongPasswordError,

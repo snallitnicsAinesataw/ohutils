@@ -1,6 +1,8 @@
 # 2.1 聊天室API
 此文档对应`ohutils.chat_api.*` 即`core\chat_api.py`。
 
+[目录](nav.md)
+
 ---
 ## 2.1.1 getChatToken() 🔑
 `getChatToken(config: Config = None) -> str`

@@ -91,7 +91,7 @@ def getChannelPins(cid: int, config: Config = None) -> list[dict]:
 
 
 @startEnd
-def joinChannel(cid, config: Config = None):
+def joinChannel(cid: int, config: Config = None):
     """加入频道。需要token。"""
     if config is None:
         config = getGlobalConfig()
@@ -100,7 +100,7 @@ def joinChannel(cid, config: Config = None):
 
 
 @startEnd
-def quitChannel(cid, config: Config = None):
+def quitChannel(cid: int, config: Config = None) -> dict:
     """退出频道。需要token。"""
     if config is None:
         config = getGlobalConfig()
@@ -109,7 +109,7 @@ def quitChannel(cid, config: Config = None):
 
 
 @startEnd
-def followChannel(cid, config: Config = None):
+def followChannel(cid: int, config: Config = None):
     """关注频道。需要token。"""
     if config is None:
         config = getGlobalConfig()
@@ -118,9 +118,37 @@ def followChannel(cid, config: Config = None):
 
 
 @startEnd
-def unfollowChannel(cid, config: Config = None):
+def unfollowChannel(cid: int, config: Config = None) -> dict:
     """取消订阅频道。需要token。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/channel/{cid}/members/me?token={quote(config.token, safe='')}"
     return _request('delete', 'json', 'quitChannel', url, config=config)
+
+
+@startEnd
+def getAllChannelMembers(cid: int, config: Config = None) -> list[dict]:
+    """获取频道内所有成员。"""
+    if config is None:
+        config = getGlobalConfig()
+
+    def _fetch(page):
+        url = f"https://{config.APIBase}api/channel/{cid}/members/?page={page}&limit={config.userPerReq}"
+        # 严格来说这个最大值是100但API不会报错，就这样了
+        resp = _request('get', 'json', 'getAllChannelMembers', url, config=config)['data']
+        pg = resp.get('pagination', {})
+        return resp.get('members', []), pg.get('total')  # 总条数
+
+    return _recur_request('getAllChannelMembers', _fetch, config.userPerReq,
+                          config.pagingDelay, is_page=True, config=config)
+
+
+@startEnd
+def createChannel(name: str, disp_name: str, desc: str = None, permission: int = 0, cover_url: str = None, config: Config = None) -> dict:
+    """创建频道。需要token。"""
+    if config is None:
+        config = getGlobalConfig()
+    data = {"token": config.token,
+            "channel_name": name, "channel_title": disp_name,
+            "description": desc or '', "join_permission": permission, 'cover_url': cover_url or ''}
+    return _request('post', 'json', 'createChannel', url, config=config, data=data)

@@ -8,6 +8,7 @@
    - `ot.blog_api.postBlog('可见性?', '_', channel_id=507, channel_only=True)`会自动加入cid=507。
  - 我怎么搞不明白这个可见性了。
  - ovarc v2草案III已决定。
+ - `ot.user_api.getBlogCollItems(944, 'notexist')`抛ServerError
  - 
  - 你不应该看到这些。
  - 晚了啊。｢在ou375删掉麦田电台之前｣。

@@ -1,5 +1,7 @@
-## 1.3 Config
+# 1.3 Config
 此文档对应`core\config.py`。`useConfig`在`core\util.py`。
+
+[目录](nav.md)
 
 ---
 ## 1.3.1 Config类
@@ -12,7 +14,7 @@ ohutils的通用配置类，用于管理所有可配置项。为dataclass。各�
 `APIBase: str = "api.ottohub.cn/"`
 `chatAPIBase: str = "api-chat.ottohub.cn/"`
 
-OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`。如`cfg.APIBase='example-proxy.com/ottohub/'` 。
+API 基础地址。一般不用改。**若覆盖，在最后加上**`/`。如`cfg.APIBase='example-proxy.com/ottohub/'` 。
 
 ### 1.3.1.2 token, alwaysUseToken
 `token: str = field(default_factory=str, repr=False)`
@@ -22,13 +24,13 @@ OTTOHub API 基础地址。一般不用改。**若覆盖，在最后加上**`/`�
 
 **注意：**`token`**不要转义最后的等号至**`%3d` **，内部会quote。**
 
-`alwaysUseToken`强制在每个请求中加入`token`。
+`alwaysUseToken`强制在每个请求中加入`token`参数。
 
 
 ### 1.3.1.3 policy
 `policy`控制写`obarc`、`ovarc`时的策略。
 
-> keep策略仅支持{bid}/{vid}、{ver}、{toolver}占位符(见1.3.4)，出现其它占位符会抛出ValueError。若需使用，请设为keep_after。
+> keep策略仅支持{bid}/{vid}、{ver}、{toolver}占位符(见1.4)，出现其它占位符会抛出ValueError。若需使用，请设为keep_after。
 
 > 目前saveVideo()不支持merge策略。
 
@@ -102,7 +104,7 @@ verbose=useStartEnd=True:
 | videoPerReq    | 20  | 每次请求获取的**视频**数。使用于`getLatest/Popular/RandomVideos()`。                                                                          |
 | tagsPerReq     | 12  | 每次请求获取的**标签**数。在`getPopularTags()`中使用。                                                                                         |
 | seigaPerReq    | 20  | 每次请求获取的**静画**数。使用于`getRankedSeiga()`、`getRelatedSeiga()`、`getSeigaByTags()`。                                                   |
-| userPerReq     | 18  | 每次请求获取的**用户**数。使用于`getAllFollowers()`、`getAllFollowings()`。                                                                    |
+| userPerReq     | 18  | 每次请求获取的**用户**数。使用于`getAllFollowers()`、`getAllFollowings()`、`getAllChannelMembers()`。                                           |
 | mediaPerReq    | 12  | 每次请求获取的**素材**数。 在`searchMedia()`中使用。                                                                                           |
 
 ### 1.3.1.7 *Path
@@ -112,7 +114,7 @@ verbose=useStartEnd=True:
 
 `indexPath` -> 保存索引文件JSON的路径。
 
-`seigaPath, mediaPath, videoPath` -> 保存静画、素材、**下载的视频文件**(downloadVideo)路径。
+`seigaPath, mediaPath, videoPath` -> 保存静画、素材、**下载的视频文件**(`downloadVideo`)路径。
 
 `chunkPath` -> `.obchk`文件保存位置。
 
@@ -120,15 +122,15 @@ verbose=useStartEnd=True:
 ### 1.3.1.8 *Name
 包含`obarcName, ovarcName, seigaName, mediaName, videoName, SQLName`。
 
-| 项             | 默认值                                 | 解释                         |
-|---------------|-------------------------------------|----------------------------|
-| obarcName     | `{bid}`                             | `.obarc`文件名。支持占位符(见1.3.4)。 |
-| ovarcName     | `{vid}`                             | `.ovarc`文件名。支持占位符。         |
-| seigaName     | `sid{sid}_p{page}.jpg`              | 下载的静画文件名。支持占位符。            |
-| mediaName     | `m_id{m_id}.{ext}`                  | 素材文件名。支持占位符。               |
-| videoName     | `{vid}_ou{uid}.mp4`                 | 下载的视频文件名。支持占位符。            |
-| SQLName       | `ohutils.db`                        | 导出数据库的文件名。                 |
-| blogChunkName | `chk_{start}_{end}_fl-{flag}.obchk` | `.obchk`文件名。               |
+| 项             | 默认值                                 | 解释                       |
+|---------------|-------------------------------------|--------------------------|
+| obarcName     | `{bid}`                             | `.obarc`文件名。支持占位符(见1.4)。 |
+| ovarcName     | `{vid}`                             | `.ovarc`文件名。支持占位符。       |
+| seigaName     | `sid{sid}_p{page}.jpg`              | 下载的静画文件名。支持占位符。          |
+| mediaName     | `m_id{m_id}.{ext}`                  | 素材文件名。支持占位符。             |
+| videoName     | `{vid}_ou{uid}.mp4`                 | 下载的视频文件名。支持占位符。          |
+| SQLName       | `ohutils.db`                        | 导出数据库的文件名。               |
+| blogChunkName | `chk_{start}_{end}_fl-{flag}.obchk` | `.obchk`文件名。             |
 
 ### 1.3.1.9 *IdxName, indexName, *GlobName
 包含`indexName, userCommentIdxName, OBCCommentIdxName, obarcGlobName, ovarcGlobName`。
@@ -239,7 +241,6 @@ assert cfg.timeout == 30
 
 复制一个`Config`对象。等价于`dataclasses.replace(config)`。
 
-
 ---
 ## 1.3.2 setGlobalConfig(), getGlobalConfig()
 `setGlobalConfig(config: Config) -> None` `getGlobalConfig() -> Config`
@@ -269,7 +270,3 @@ with ohutils.useConfig(cfg2):
     ohutils.setGlobalConfig(cfg3)          # 无效
     ohutils.blog_api.getBlogDetail(12306)  # 还是cfg2
 ```
-
-## 1.3.4 占位符
-TODO
-

@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
 from .config import Config, getGlobalConfig, setGlobalConfig, _getIConfig
 from contextlib import contextmanager
-from .exception import APIError, mappings, MethodNotAllowed, ExhaustedRetriesError
+from .exception import APIError, _mappings, MethodNotAllowed, ExhaustedRetriesError
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 import logging
 from requests import Response
@@ -346,7 +346,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = resp.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    raise mappings.get(msg, APIError)(msg)
+                    raise _mappings.get(msg, APIError)(msg)
                 if isinstance(jsoned, dict):
                     jsoned.pop('status', None)
                 return jsoned
@@ -360,7 +360,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = e.response.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    raise mappings.get(msg, APIError)(msg)
+                    raise _mappings.get(msg, APIError)(msg)
             except ValueError:
                 # 如果响应不是JSON
                 if status >= 500:
