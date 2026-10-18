@@ -123,6 +123,8 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
         pub_ts = blog_data.get("ts", -DEFAULT_TS)
         archive_ts = int(time.time())
         channel_id = blog_data.get("channel_id", 0)
+        is_manual = int(pub_ts > 0)
+        flag = 0
         if version >= 4:
             cr_type = blog_data.get("copyright_type", 0)
             b_type = blog_data.get("blog_type", 0)
@@ -130,21 +132,21 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             tags = blog_data.get("tag", [])
             forward = blog_data.get("forward")
             is_unavailable = 0
-            is_manual = int(pub_ts > 0)
             if forward is not None:
                 is_unavailable = int(forward.get("is_unavailable"))
-            flag = blog_data.get("is_gore", 0)*F_GORE + is_unavailable*F_FORWARD_DIED + is_manual*F_MANUAL_BUILD
+            flag = (blog_data.get("is_gore", 0)*F_GORE) | (is_unavailable*F_FORWARD_DIED)
+        flag |= is_manual*F_MANUAL_BUILD
 
         f.write(b'OBARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
-        f.write(struct.pack('<B', flag if version == 4 else 0))  # 1B 标志位
+        f.write(struct.pack('<B', flag))  # 1B 标志位，我忘了写>=4导致4000+标记v5和以后全丢了 --26/10/18
         f.write(struct.pack('<B', 0))  # 1B 保留
         f.write(struct.pack('<I', abs(pub_ts)))  # 4B 原始发布时间
         f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
         f.write(struct.pack('<I', 0))  # 4B CRC32（占位）
         f.write(struct.pack('<H', channel_id))  # 2B 频道ID
-        f.write(struct.pack('<B', len(tags) if version >= 4 else 0))  # 1B 保留 / tag数量(仅v4)
+        f.write(struct.pack('<B', len(tags) if version >= 4 else 0))  # 1B 保留 / tag数量(仅v4及以上)
         f.write(b'\xA5')  # 1B 头结尾
 
         # ===================动态条目===================
