@@ -7,11 +7,14 @@
  - 强行指定 未加入的频道id 发布 会自动 加入 并 订阅: 
    - `ot.blog_api.postBlog('可见性?', '_', channel_id=507, channel_only=True)`会自动加入cid=507。
  - 我怎么搞不明白这个可见性了。
- - ovarc v2草案III已决定。
+ - ovarc v2草案IV已决定。
  - `ot.user_api.getBlogCollItems(944, 'notexist')`抛ServerError
  - PERM_NOBODY属性频道不允许channel_only。
+ - 弹幕的render是干什么用的？遗留？
+ - `ot.vid_api.sendDanmaku(33171, 'render_ptcss', 0.5, render='transform:rotate(180deg);')`抛ServerError
+ - 似乎是只要render非空就抛ServerError。
  - 
  - 你不应该看到这些。
  - 晚了啊。｢在ou375删掉麦田电台之前｣。
- -  ~~安心をしてください、居なくならないでしょう~~
+ - ~~安心をしてください、居なくならないでしょう~~
 

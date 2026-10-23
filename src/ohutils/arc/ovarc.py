@@ -13,9 +13,12 @@ from requests import Response, RequestException
 import os
 import zlib
 import random
+import hashlib
 
-_DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = {DANMAKU_SCROLL: 'scroll', DANMAKU_TOP: 'top', DANMAKU_BOTTOM: 'bottom'}
-_DANMAKU_MAP_INV: dict[Literal['scroll', 'top', 'bottom'], int] = {'scroll': DANMAKU_SCROLL, 'top': DANMAKU_TOP, 'bottom': DANMAKU_BOTTOM}
+_DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = {DANMAKU_SCROLL: 'scroll', DANMAKU_TOP: 'top',
+                                                               DANMAKU_BOTTOM: 'bottom'}
+_DANMAKU_MAP_INV: dict[Literal['scroll', 'top', 'bottom'], int] = {'scroll': DANMAKU_SCROLL, 'top': DANMAKU_TOP,
+                                                                   'bottom': DANMAKU_BOTTOM}
 
 
 def _parseDanmaku(ver: int, data: bytes, offset: int) -> tuple[Danmaku, int]:
@@ -49,33 +52,28 @@ def _writeDanmaku(ver: int, f, danmaku: Danmaku):
     f.write(content_bytes)
 
 
-def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
-                video_stream: Union[bytes, Response], cover_bytes: bytes, fp, config: Config = None):
+def _writeOvarc1(vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
+                 video_stream: Union[bytes, Response], cover_bytes: bytes, fp, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     with open(fp, 'wb') as f:
         # ===================文件头 (32字节)===================
         info_, flag = {}, 0
-        if version <= 1:
-            pub_ts = parseTime(video_data["time"]) if video_data.get("time") else DEFAULT_TS
+        pub_ts = parseTime(video_data["time"]) if video_data.get("time") else DEFAULT_TS
         archive_ts = int(time.time())
         channel_id = video_data.get("channel_id", 0)
         is_gore = bool(int(video_data.get('is_gore', 0)))
         tags = video_data.get('tags', [])
-        flag = (is_gore*F_GORE) | 0
+        flag = is_gore * F_GORE
         vid_type = int(video_data.get('type', 0))
         category = int(video_data.get('category', 0))
 
         f.write(b'OVARC')  # 5B magic
-        f.write(struct.pack('<B', version))  # 1B版本
+        f.write(struct.pack('<B', 1))  # 1B版本
         f.write(struct.pack('<B', flag))  # 1B 标志位
         f.write(struct.pack('<B', (vid_type << 4) | category))  # 1B v_type + category
         f.write(struct.pack('<I', pub_ts))  # 4B 原始发布时间
-        if version >= 2:
-            f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
-        else:
-            # snapshot_num 不会写
-            f.write(b'\x00\x00')   # 保留 2B
+        f.write(struct.pack('<I', archive_ts))  # 4B 存档时间
 
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
         f.write(struct.pack('<I', 0))  # 4B CRC32（占位）
@@ -90,7 +88,6 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
         f.write(struct.pack('<I', int(video_data.get("uid", 0))))  # 4B uid
         f.write(struct.pack('<I', int(video_data.get("like_count", 0))))  # 4B like
         f.write(struct.pack('<I', int(video_data.get("favorite_count", 0))))  # 4B fav
-
         f.write(struct.pack('<I', int(video_data.get("view_count", 0))))  # 4B view
         f.write(struct.pack('<I', int(video_data.get('duration', 0))))  # 4B duration (s)
         info_['cover_addr'] = f.tell()
@@ -122,7 +119,7 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
 
         f.write(struct.pack('<I', len(danmaku)))
         for d in danmaku:
-            _writeDanmaku(version, f, d)
+            _writeDanmaku(1, f, d)
 
         info_['cover'] = f.tell()
         # ===================视频封面===================
@@ -160,8 +157,151 @@ def _writeOvarc(version: int, vid: int, video_data: dict, comments: list[Comment
         f.seek(info_['video'])
         f.write(struct.pack('<Q', video_size))
     if config.verbose:
-        logger.info(f"[_writeOvarc/v{version}]Write complete: {fp}, CRC32: {crc32:08X}")
+        logger.info(f"[_writeOvarc/v1]Write complete: {fp}, CRC32: {crc32:08X}")
     return fp
+
+
+def _writeOvarc2p(version: int, vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
+                  video_stream: Union[bytes, Response], cover_bytes: bytes, fp, config: Config = None):
+    if config is None:
+        config = getGlobalConfig()
+    if os.path.exists(fp):
+        raise NotImplementedError("追加快照还没写")
+    h_meta = hashlib.sha1()
+    h_cover = hashlib.sha1()
+    h_video = hashlib.sha1()
+    with open(fp, 'wb') as f:
+        # ===================文件头 (32字节)===================
+        info_ = {}
+        pub_ts = parseTime(video_data["time"]) if video_data.get("time") else DEFAULT_TS
+        channel_id = video_data.get("channel_id", 0)
+        is_gore = bool(int(video_data.get('is_gore', 0)))
+        tags = video_data.get('tags', [])
+        flag = is_gore * F_GORE
+        vid_type = int(video_data.get('type', 0))
+        category = int(video_data.get('category', 0))
+
+        f.write(b'OVARC')  # 5B magic
+        f.write(struct.pack('<B', version))  # 1B版本
+        f.write(struct.pack('<B', flag))  # 1B 标志位
+        f.write(struct.pack('<B', (vid_type << 4) | category))  # 1B v_type + category
+        f.write(struct.pack('<I', pub_ts))  # 4B 原始发布时间
+        f.write(struct.pack('<H', 1))   # 2B snapshot_num = 1
+        f.write(struct.pack('<H', 0))   # 2B 保留
+
+        f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
+        f.write(struct.pack('<H', channel_id))  # 2B 频道ID
+        f.write(struct.pack('<I', int(video_data.get("vid", vid))))  # 4B vid
+        f.write(struct.pack('<B', 0))  # 1B 保留
+        f.write(b'\xA3')  # 1B 头结尾
+
+        # ===================快照部分===================
+        f.write(struct.pack('<I', int(video_data.get('uid', 0))))  # 4B uid
+        info_['last_ss_put'] = f.tell()
+        f.write(struct.pack('<Q', 0))  # 8B last_snapshot_addr 占位
+        # 快照
+        # info_['next_ss'] = f.tell()
+        f.write(struct.pack('<Q', 0))  # 8B next_snapshot_addr = 0
+        f.write(struct.pack('<I', int(time.time())))  # 4B snapshot_ts
+        info_['sha1_put'] = f.tell()
+        f.write(b'\x00' * 20)  # sha1 (占位)
+        f.write(struct.pack('<B', 0xFF))  # 1B flags = $FF
+        f.write(struct.pack('<B', 0))  # 1B reserved
+
+        info_['cover_put'] = f.tell()
+        f.write(struct.pack('<Q', 0))  # 8B 封面地址（占位）
+        info_['meta_s'] = f.tell()
+        f.write(struct.pack('<I', int(video_data.get("like_count", 0))))  # 4B like
+        f.write(struct.pack('<I', int(video_data.get("favorite_count", 0))))  # 4B fav
+        f.write(struct.pack('<I', int(video_data.get("view_count", 0))))  # 4B view
+        f.write(struct.pack('<I', int(video_data.get('duration', 0))))  # 4B duration (s)
+
+        f.write(struct.pack('<H', len(title_bytes)))  # title_len
+        f.write(title_bytes)  # title
+        f.write(struct.pack('<I', len(intro_bytes)))  # intro_len
+        f.write(intro_bytes)  # intro
+
+        for t in tags:  # tags
+            t_bytes = t.encode('utf-8')
+            f.write(struct.pack('<H', len(t_bytes)))
+            f.write(t_bytes)
+
+        staff = video_data.get('staff', [])  # staff
+        f.write(struct.pack('<B', len(staff)))
+        for s in staff:
+            f.write(struct.pack('<i', s.get('uid', 0)))  # uid signed
+            role_bytes = s.get('role', '').encode('utf-8')
+            f.write(struct.pack('<B', len(role_bytes)))  # role_len
+            f.write(role_bytes)  # role
+            f.write(struct.pack('<I', s.get('sort_order', 0)))  # sort_order
+
+        f.write(struct.pack('<I', len(comments)))
+        for c in comments:
+            _writeComment(_LATEST_OBARC_VER, f, c, pm=True)
+
+        f.write(struct.pack('<I', len(danmaku)))
+        for d in danmaku:
+            _writeDanmaku(version, f, d)
+        info_['meta_e'] = f.tell()
+
+        # ===================视频封面===================
+        h_cover.update(cover_bytes)
+        dig = h_cover.digest()
+        logger.debug(f'[_writeOvarc2p/v2]sha1 of cover is {dig.hex()}')
+        f.write(dig)
+        info_['cover'] = f.tell()
+        f.write(struct.pack('<I', len(cover_bytes)))
+        f.write(cover_bytes)
+        del cover_bytes  # 清理
+
+        # ===================视频===================
+        video_size = 0
+        info_['video_sha1_put'] = f.tell()
+        f.write(b'\x00' * 20)  # sha1 (占位)
+        info_['video_size_put'] = f.tell()
+        f.write(struct.pack('<Q', video_size))  # video_size（占位）
+        for chunk in _iter_chunks(video_stream, config.chunkSize):
+            f.write(chunk)
+            h_video.update(chunk)
+            video_size += len(chunk)
+        logger.debug(f'[_writeOvarc2p/v2]sha1 of video is {h_video.hexdigest()}')
+
+        f.write(_OVARC_END_MARKER)
+        # 回填
+        file_size = f.tell()
+
+    with open(fp, 'r+b') as f:
+        # 回填总大小(偏移0x10)
+        f.seek(0x10)
+        f.write(struct.pack('<Q', file_size))
+
+        # 回填last_snapshot_addr(偏移0x24)
+        f.seek(0x24)
+        f.write(struct.pack('<I', info_['last_ss_put']))
+
+        # 回填地址
+        f.seek(info_['cover_put'])
+        f.write(struct.pack('<Q', info_['cover']))
+        f.seek(info_['video_size_put'])
+        f.write(struct.pack('<Q', video_size))
+        f.seek(info_['video_sha1_put'])
+        f.write(h_video.digest())
+        f.seek(info_['meta_s'])
+        h_meta.update(f.read(info_['meta_e'] - info_['meta_s']))
+        logger.debug(f'[_writeOvarc2p/v2]sha1 of metadata is {h_meta.hexdigest()}')
+        f.seek(info_['sha1_put'])
+        f.write(struct.pack('<Q', h_meta.digest()))
+    if config.verbose:
+        logger.info(f"[_writeOvarc/v1]Write complete: {fp}")
+    return fp
+
+
+def _writeOvarc_dist(version: int, vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
+                     video_stream: Union[bytes, Response], cover_bytes: bytes, fp, config: Config = None):
+    if version == 1:
+        return _writeOvarc1(vid, video_data, comments, danmaku, video_stream, cover_bytes, fp, config)
+    else:
+        return _writeOvarc2p(version, vid, video_data, comments, danmaku, video_stream, cover_bytes, fp, config)
 
 
 def _loadOvarc(version: int, fp: str) -> VideoEntry:
@@ -357,8 +497,8 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
     exist = os.path.exists(file_path)
     if not exist or policy == 'override':
         try:
-            _writeOvarc(version, vid, video_data, comments, danmaku_list, video_stream, cover_binary, temp_file_path,
-                        config)
+            _writeOvarc_dist(version, vid, video_data, comments, danmaku_list, video_stream, cover_binary,
+                             temp_file_path, config)
         finally:
             video_stream.close()
         os.replace(temp_file_path, file_path)

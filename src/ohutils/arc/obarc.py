@@ -94,10 +94,18 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
         return BlogEntry(bid, uid, like, fav, view, channel_id, title, pub_ts, arc_ts, content, comments, flags), offset
 
 
-def _writeComment(comment_ver: int, f, comment: Comment):
+def _writeComment(comment_ver: int, f, comment: Comment, pm: bool = None):
+    """pm会继承给子评论。+: True, -: False"""
+    # 这是一个暂时的解决方案。PyCharm LangTool我这句话没有语法错误，不要再｢动词的修饰一般为‘形容词（副词）+地+动词’｣了。
     # 递归写评论
+    sign = 1
+    if pm is not None:
+        sign = 1 if pm else -1
     content_bytes = comment.content.encode('utf-8')
-    f.write(struct.pack('<I', comment.cid))
+    if pm is None:
+        f.write(struct.pack('<I', comment.cid))
+    else:
+        f.write(struct.pack('<i', comment.cid * sign))
     f.write(struct.pack('<I', comment.uid))
     f.write(struct.pack('<I', comment.timestamp))
     if comment_ver >= 5:  # v5新增字段pin_order
@@ -110,7 +118,7 @@ def _writeComment(comment_ver: int, f, comment: Comment):
         f.write(struct.pack('<I', len(comment.replies)))
         # v3及之后将reply_count改为4字节
     for reply in comment.replies:
-        _writeComment(comment_ver, f, reply)
+        _writeComment(comment_ver, f, reply, pm)
 
 
 def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment], fp: str, config: Config = None):
@@ -402,7 +410,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
             logger.info(f"[_archiveBlog/v{version}]Finish, get {len(comments)} top comment(s) in total")
 
     # ===================写文件===================
-    blog_data['ts'] = -parseTime(blog_data['time']) or -DEFAULT_TS
+    blog_data['ts'] = -parseTime(blog_data.get('time')) or -DEFAULT_TS
     exist = os.path.exists(file_path)
     if not exist or policy == 'override':
         return _writeObarc(version, bid, blog_data, comments, file_path, config=config), True

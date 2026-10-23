@@ -205,9 +205,9 @@ def toggleVideoFav(vid, config: Config = None):
 
 @startEnd
 def sendDanmaku(vid: int, text: str, time_: float = 0.0, mode: Literal['scroll', 'top', 'bottom'] = 'scroll',
-                color: str = 'FFFFFF', font_size: str = '25px', render: str = '', config: Config = None):
-    """发送弹幕。
-    示例：color: '1B3DF6'; font_size: '25px'"""
+                color: str = 'FFFFFF', font_size: str = '25px', render: str = '', config: Config = None) -> None:
+    """发送弹幕。需要token。
+    示例：color='1B3DF6', font_size='25px'"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/danmaku/"
@@ -220,7 +220,7 @@ def sendDanmaku(vid: int, text: str, time_: float = 0.0, mode: Literal['scroll',
 
 
 def sendDanmakuD(vid, dan: Danmaku, config: Config = None):
-    """发送弹幕。参数来自Danmaku实例。danmaku_id不使用。"""
+    """发送弹幕。需要token。参数来自Danmaku实例。danmaku_id不使用。"""
     sendDanmaku(vid, dan.text, danmaku.time_ms/1000, dan.mode,
                 f"{danmaku.color_rgb:06X}", f"{danmaku.font_size}px", dan.render, config)
 
@@ -254,12 +254,12 @@ def postDraft(video_path: str, cover_path: str, title: str, intro: str = '', vid
     else:
         tag = _tag_factory(tags)
 
-    # 2. 本地校验 + duration 探测（上传前做完，早失败）
+    # ====================本地校验+duration探测====================
     vp, cp = Path(video_path), Path(cover_path)
     if vp.stat().st_size > _MAX_VIDEO:
-        raise FileTooBigError(f"视频超过 400MB: {vp.stat().st_size}")
+        raise FileTooBigError(f"视频超过400MB: {vp.stat().st_size}")
     if cp.stat().st_size > _MAX_COVER:
-        raise FileTooBigError(f"封面超过 3MB: {cp.stat().st_size}")
+        raise FileTooBigError(f"封面超过3MB: {cp.stat().st_size}")
 
     video_ext = vp.suffix.lstrip(".").lower()
     cover_ext = cp.suffix.lstrip(".").lower()
@@ -273,7 +273,7 @@ def postDraft(video_path: str, cover_path: str, title: str, intro: str = '', vid
         duration = checkDurI(vp)
     logger.info(f'[postDraft]got duration: {duration} second(s)')
 
-    # 3. presign
+    # presign
     v = _request('get', 'json', 'postDraft',
                  f"https://{config.APIBase}api/video/video-presigned?extension={video_ext}&token={quote(config.token, safe='')}",
                  config=config)['data']

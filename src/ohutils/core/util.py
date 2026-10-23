@@ -146,7 +146,7 @@ def parseTime(time_str: str) -> int:
     解析失败返回DEFAULT_TS。"""
     try:
         return int(datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").timestamp())
-    except OSError:
+    except (OSError, TypeError, ValueError):
         return _const.DEFAULT_TS
 
 
