@@ -2,9 +2,9 @@ from ..core.util import Danmaku, Comment, VideoEntry, _request, _temp_name, _ite
     getGlobalConfig, logger, parseTime, _fn_formatTime, _c, _crc
 from ..core.config import Config
 from ..core._const import DANMAKU_TOP, DANMAKU_SCROLL, DANMAKU_BOTTOM, _LATEST_OBARC_VER, _OVARC_END_MARKER, \
-    _LATEST_OVARC_VER, _YELLOW, _RED, _GRAY, F_MANUAL_BUILD, F_GORE, F_MULTI_SNAPSHOT
+    _LATEST_OVARC_VER, _YELLOW, _RED, _GRAY, F_MANUAL, F_GORE
 from ..core.vid_api import getAllDanmaku, getAllVideoComments, getVideoDetail, _downloadVideo
-from ..core.exception import VIDError
+from ..core.exception import VIDError, VerificationError
 from typing import Literal, Union, Optional
 from .obarc import _writeComment, _parseComment
 import time
@@ -20,10 +20,25 @@ _DANMAKU_MAP: dict[int, Literal['scroll', 'top', 'bottom']] = {DANMAKU_SCROLL: '
 _DANMAKU_MAP_INV: dict[Literal['scroll', 'top', 'bottom'], int] = {'scroll': DANMAKU_SCROLL, 'top': DANMAKU_TOP,
                                                                    'bottom': DANMAKU_BOTTOM}
 
+class VideoSnapshots:
+    def __init__(self):
+        ...
+
+    def latest(self):
+        ...
+
+    def all(self):
+        ...
+
 
 def _parseDanmaku(ver: int, data: bytes, offset: int) -> tuple[Danmaku, int]:
-    d_id, time_ms, mode, color, f_size, render_len = struct.unpack_from('<IQBIBB', data, offset)
-    offset += 19
+    if ver <= 1:
+        d_id = struct.unpack_from('<I', data, offset)[0]
+    else:
+        d_id = struct.unpack_from('<i', data, offset)[0]
+    offset += 4
+    time_ms, mode, color, f_size, render_len = struct.unpack_from('<QBIBB', data, offset)
+    offset += 15
     render = data[offset:offset + render_len].decode('utf-8')
     offset += render_len
 
@@ -44,12 +59,92 @@ def _writeDanmaku(ver: int, f, danmaku: Danmaku):
     f.write(struct.pack('<B', _DANMAKU_MAP_INV[danmaku.mode]))
     f.write(struct.pack('<I', danmaku.color_rgb))
     f.write(struct.pack('<B', danmaku.font_size))
-
     f.write(struct.pack('<B', len(render_bytes)))
     f.write(render_bytes)
-
     f.write(struct.pack('<H', len(content_bytes)))
     f.write(content_bytes)
+
+
+def _readSnapshot(ver: int, vid: int, uid: int, pub_ts: int, f, snapshot_addr, verify: bool = True):
+    f.seek(snapshot_addr)
+    next_addr, snapshot_ts = struct.unpack('<QI', f.read(12))
+    h_meta_s = -1  # PyCharm你是哈批吗我用同一个条件判断还能告诉我｢局部变量 'h_meta_s' 可能在赋值前引用｣?
+    title = intro = staffs = danmaku = comments = cover_binary = video_size = video_addr = tags = video_sha1 = None
+    sha1 = f.read(20)
+    flag_cg = struct.unpack('<B', f.read(1))[0]
+    if verify:
+        h_meta_s = f.tell()
+    flag2, cd_len, like, fav, view, dur, v_c, cid = struct.unpack('<BIIIIIBI', f.read(26))
+    vid_type, category, gore = (v_c >> 4), v_c & 0xf, flag2 & F_GORE
+    if flag_cg & 1:
+        # title更改
+        title_len = struct.unpack('<H', f.read(2))[0]
+        title = f.read(title_len).decode('utf-8')
+    if flag_cg & 2:
+        # intro更改
+        intro_len = struct.unpack('<I', f.read(4))[0]
+        intro = f.read(intro_len).decode('utf-8')
+    if flag_cg & 4:
+        # tags更改
+        tag_count = f.read(1)[0]
+        tags = []
+        for _ in range(tag_count):
+            tl = struct.unpack('<H', f.read(2))[0]
+            tags.append(f.read(tl).decode('utf-8'))
+    if flag_cg & 8:
+        # staffs更改
+        staff_count = struct.unpack('<B', f.read(1))[0]
+        staffs = []
+        for _ in range(staff_count):
+            s_uid = struct.unpack('<I', f.read(4))[0]
+            rl = f.read(1)[0]
+            role = f.read(rl).decode('utf-8')
+            sort_order = struct.unpack('<I', f.read(4))[0]
+            staffs.append(Staff(s_uid, role, sort_order))
+    cd_data = f.read(cd_len)
+    offset = 0
+    if flag_cg & 16:
+        # comments更改
+        comment_count = struct.unpack_from('<I', cd_data, offset)[0]
+        offset += 4
+        comments = []
+        for _ in range(comment_count):
+            c, offset = _parseComment('video', _LATEST_OBARC_VER, cd_data, offset)
+            comments.append(c)
+    if flag_cg & 32:
+        # dan更改
+        danmaku_count = struct.unpack_from('<I', cd_data, offset)[0]
+        offset += 4
+        danmaku = []
+        for _ in range(danmaku_count):
+            d, offset = _parseDanmaku(ver, cd_data, offset)
+            danmaku.append(d)
+    if verify:
+        h_meta_e = f.tell()
+        f.seek(h_meta_s)
+        h_meta = hashlib.sha1(f.read(h_meta_e - h_meta_s))  # 计算h_meta
+        f.seek(h_meta_e)
+        if h_meta.digest() != sha1:
+            raise VerificationError(f'快照sha1不匹配: 应为{sha1.hex()}, 实为{h_meta.hexdigest()}')
+    if flag_cg & 64:
+        # cover更改
+        cover_sha1 = f.read(20)
+        cover_size = struct.unpack('<I', f.read(4))[0]
+        cover_binary = f.read(cover_size)
+        h_c = hashlib.sha1(cover_binary)
+        if verify and cover_sha1 != h_c.digest():
+            raise VerificationError(f'快照中封面sha1不匹配: 应为{cover_sha1.hex()}, 实为{h_c.hexdigest()}')
+    if flag_cg & 128:
+        # video更改
+        video_sha1 = f.read(20)
+        video_size = struct.unpack('<Q', f.read(8))[0]
+        video_addr = f.tell()
+
+    return VideoEntry(vid=vid, uid=uid, like_count=like, favorite_count=fav, view_count=view, duration=dur,
+                      channel_id=cid, pub_time=pub_ts, arc_time=snapshot_ts, tags=tags,
+                      vid_type=vid_type, category=category, title=title, intro=intro, staffs=staffs,
+                      is_gore=gore, danmaku=danmaku, comments=comments, _cover=cover_binary, _video_fp=f.name,
+                      _video_size=video_size, _video_offset=video_addr), video_sha1, next_addr
 
 
 def _writeOvarc1(vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
@@ -180,47 +275,51 @@ def _writeOvarc2p(version: int, vid: int, video_data: dict, comments: list[Comme
         flag = is_gore * F_GORE
         vid_type = int(video_data.get('type', 0))
         category = int(video_data.get('category', 0))
+        vid = int(video_data.get("vid", vid))
+        uid = int(video_data.get('uid', 0))
 
         f.write(b'OVARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
-        f.write(struct.pack('<B', flag))  # 1B 标志位
-        f.write(struct.pack('<B', (vid_type << 4) | category))  # 1B v_type + category
         f.write(struct.pack('<I', pub_ts))  # 4B 原始发布时间
         f.write(struct.pack('<H', 1))   # 2B snapshot_num = 1
-        f.write(struct.pack('<H', 0))   # 2B 保留
+        f.write(struct.pack('<I', uid))  # 4B uid
 
         f.write(struct.pack('<Q', 0))  # 8B 总大小（占位）
-        f.write(struct.pack('<H', channel_id))  # 2B 频道ID
-        f.write(struct.pack('<I', int(video_data.get("vid", vid))))  # 4B vid
-        f.write(struct.pack('<B', 0))  # 1B 保留
+        f.write(struct.pack('<H', 0))  # 2B 保留
+        f.write(struct.pack('<I', vid))  # 4B vid
+        f.write(struct.pack('<B', 0))  # 1B 总标志位,不知道写啥
         f.write(b'\xA3')  # 1B 头结尾
 
         # ===================快照部分===================
-        f.write(struct.pack('<I', int(video_data.get('uid', 0))))  # 4B uid
+        title_bytes = video_data.get("title", "").encode('utf-8')
+        intro_bytes = video_data.get("intro", "").encode('utf-8')
         info_['last_ss_put'] = f.tell()
         f.write(struct.pack('<Q', 0))  # 8B last_snapshot_addr 占位
         # 快照
-        # info_['next_ss'] = f.tell()
+        info_['last_ss'] = f.tell()
         f.write(struct.pack('<Q', 0))  # 8B next_snapshot_addr = 0
         f.write(struct.pack('<I', int(time.time())))  # 4B snapshot_ts
         info_['sha1_put'] = f.tell()
         f.write(b'\x00' * 20)  # sha1 (占位)
         f.write(struct.pack('<B', 0xFF))  # 1B flags = $FF
-        f.write(struct.pack('<B', 0))  # 1B reserved
-
-        info_['cover_put'] = f.tell()
-        f.write(struct.pack('<Q', 0))  # 8B 封面地址（占位）
         info_['meta_s'] = f.tell()
+        f.write(struct.pack('<B', flag))  # 1B flags2
+
+        info_['cd_put'] = f.tell()
+        f.write(struct.pack('<I', 0))  # 8B cd_len = 0
         f.write(struct.pack('<I', int(video_data.get("like_count", 0))))  # 4B like
         f.write(struct.pack('<I', int(video_data.get("favorite_count", 0))))  # 4B fav
         f.write(struct.pack('<I', int(video_data.get("view_count", 0))))  # 4B view
         f.write(struct.pack('<I', int(video_data.get('duration', 0))))  # 4B duration (s)
+        f.write(struct.pack('<B', (vid_type << 4) | category))  # 1B v_type + category
+        f.write(struct.pack('<I', channel_id))  # 4B channel_id
 
         f.write(struct.pack('<H', len(title_bytes)))  # title_len
         f.write(title_bytes)  # title
         f.write(struct.pack('<I', len(intro_bytes)))  # intro_len
         f.write(intro_bytes)  # intro
 
+        f.write(struct.pack('<B', len(tags)))
         for t in tags:  # tags
             t_bytes = t.encode('utf-8')
             f.write(struct.pack('<H', len(t_bytes)))
@@ -235,6 +334,7 @@ def _writeOvarc2p(version: int, vid: int, video_data: dict, comments: list[Comme
             f.write(role_bytes)  # role
             f.write(struct.pack('<I', s.get('sort_order', 0)))  # sort_order
 
+        info_['cd_s'] = f.tell()
         f.write(struct.pack('<I', len(comments)))
         for c in comments:
             _writeComment(_LATEST_OBARC_VER, f, c, pm=True)
@@ -247,9 +347,8 @@ def _writeOvarc2p(version: int, vid: int, video_data: dict, comments: list[Comme
         # ===================视频封面===================
         h_cover.update(cover_bytes)
         dig = h_cover.digest()
-        logger.debug(f'[_writeOvarc2p/v2]sha1 of cover is {dig.hex()}')
+        logger.debug(f'[_writeOvarc2p/v{version}]sha1 of cover is {dig.hex()}')
         f.write(dig)
-        info_['cover'] = f.tell()
         f.write(struct.pack('<I', len(cover_bytes)))
         f.write(cover_bytes)
         del cover_bytes  # 清理
@@ -264,39 +363,36 @@ def _writeOvarc2p(version: int, vid: int, video_data: dict, comments: list[Comme
             f.write(chunk)
             h_video.update(chunk)
             video_size += len(chunk)
-        logger.debug(f'[_writeOvarc2p/v2]sha1 of video is {h_video.hexdigest()}')
+        logger.debug(f'[_writeOvarc2p/v{version}]sha1 of video is {h_video.hexdigest()}')
 
         f.write(_OVARC_END_MARKER)
         # 回填
         file_size = f.tell()
 
     with open(fp, 'r+b') as f:
-        # 回填总大小(偏移0x10)
+        # 回填各种
         f.seek(0x10)
         f.write(struct.pack('<Q', file_size))
-
-        # 回填last_snapshot_addr(偏移0x24)
-        f.seek(0x24)
-        f.write(struct.pack('<I', info_['last_ss_put']))
-
-        # 回填地址
-        f.seek(info_['cover_put'])
-        f.write(struct.pack('<Q', info_['cover']))
+        f.seek(info_['last_ss_put'])
+        f.write(struct.pack('<I', info_['last_ss']))
+        f.seek(info_['cd_put'])
+        f.write(struct.pack('<I', info_['meta_e'] - info_['cd_s']))
         f.seek(info_['video_size_put'])
         f.write(struct.pack('<Q', video_size))
-        f.seek(info_['video_sha1_put'])
-        f.write(h_video.digest())
         f.seek(info_['meta_s'])
         h_meta.update(f.read(info_['meta_e'] - info_['meta_s']))
-        logger.debug(f'[_writeOvarc2p/v2]sha1 of metadata is {h_meta.hexdigest()}')
+        logger.debug(f'[_writeOvarc2p/v{version}]sha1 of metadata is {h_meta.hexdigest()}')
+        f.seek(info_['video_sha1_put'])
+        f.write(h_video.digest())
         f.seek(info_['sha1_put'])
-        f.write(struct.pack('<Q', h_meta.digest()))
+        f.write(h_meta.digest())
+
     if config.verbose:
-        logger.info(f"[_writeOvarc/v1]Write complete: {fp}")
+        logger.info(f"[_writeOvarc2p/v{version}]Write complete: {fp}")
     return fp
 
 
-def _writeOvarc_dist(version: int, vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
+def _writeOvarc_disp(version: int, vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
                      video_stream: Union[bytes, Response], cover_bytes: bytes, fp, config: Config = None):
     if version == 1:
         return _writeOvarc1(vid, video_data, comments, danmaku, video_stream, cover_bytes, fp, config)
@@ -304,12 +400,12 @@ def _writeOvarc_dist(version: int, vid: int, video_data: dict, comments: list[Co
         return _writeOvarc2p(version, vid, video_data, comments, danmaku, video_stream, cover_bytes, fp, config)
 
 
-def _loadOvarc(version: int, fp: str) -> VideoEntry:
+def _loadOvarc1(fp: str) -> VideoEntry:
     with open(fp, "rb") as f:
         header = f.read(32)
         # 提取头
         if header[:5] != b'OVARC':
-            raise ValueError(f"{fp}不是有效的.ovarc文件")
+            raise VerificationError(f"{fp}不是有效的.ovarc文件")
         flags = header[6]
         is_gore = flags & 1
         v_c = header[7]
@@ -360,7 +456,7 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
         offset += 4
         danmaku = []
         for _ in range(danmaku_count):
-            d, offset = _parseDanmaku(version, cd_data, offset)
+            d, offset = _parseDanmaku(1, cd_data, offset)
             danmaku.append(d)
 
         # cover
@@ -389,6 +485,24 @@ def _loadOvarc(version: int, fp: str) -> VideoEntry:
     )
 
 
+def _loadOvarc2p(version: int, fp: str):
+    with open(fp, "rb") as f:
+        header = f.read(6)
+        # 提取头
+        if header[:5] != b'OVARC':
+            raise VerificationError(f"{fp}不是有效的.ovarc文件")
+        pub_ts, s_num, uid, size, _, vid, flag, _, last_ss = struct.unpack('<IHIQHIBBQ', f.read(34))
+        ss, _, _ = _readSnapshot(version, vid, uid, pub_ts, f, last_ss)
+    return ss
+
+
+def _loadOvarc_disp(ver, fp):
+    if ver == 1:
+        return _loadOvarc1(fp)
+    else:
+        return _loadOvarc2p(ver, fp)
+
+
 def loadVideo(vid: int, fn: str = None, config: Config = None) -> VideoEntry:
     """从config.savePath中加载.ovarc文件。
     若savePath中包含了除了{vid}之外的占位符，应提供完整文件名。此时vid参数被忽略。"""
@@ -402,7 +516,7 @@ def loadVideo(vid: int, fn: str = None, config: Config = None) -> VideoEntry:
                 f"fileName包含vid以外的占位符{e}") from e
     filepath = os.path.join(config.savePath, fn)
     ver = getVersion(filepath)
-    return _loadOvarc(ver, filepath)
+    return _loadOvarc_disp(ver, filepath)
 
 
 def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[str], bool]:
@@ -497,7 +611,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
     exist = os.path.exists(file_path)
     if not exist or policy == 'override':
         try:
-            _writeOvarc_dist(version, vid, video_data, comments, danmaku_list, video_stream, cover_binary,
+            _writeOvarc_disp(version, vid, video_data, comments, danmaku_list, video_stream, cover_binary,
                              temp_file_path, config)
         finally:
             video_stream.close()
@@ -512,7 +626,7 @@ def _saveVideo(version: int, vid: int, config: Config = None) -> tuple[Optional[
         return file_path, True
 
     if policy == 'merge':
-        raise NotImplementedError  # 我差不多是知道了。
+        raise NotImplementedError  # 我好像是不知道了。
     return file_path, True
 
 

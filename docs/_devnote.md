@@ -7,12 +7,15 @@
  - 强行指定 未加入的频道id 发布 会自动 加入 并 订阅: 
    - `ot.blog_api.postBlog('可见性?', '_', channel_id=507, channel_only=True)`会自动加入cid=507。
  - 我怎么搞不明白这个可见性了。
- - ovarc v2草案IV已决定。
+ - ovarc v2草案VII已决定。服了每次怎么都是在实际写代码的时候才发现有要加的字段。
  - `ot.user_api.getBlogCollItems(944, 'notexist')`抛ServerError
  - PERM_NOBODY属性频道不允许channel_only。
  - 弹幕的render是干什么用的？遗留？
  - `ot.vid_api.sendDanmaku(33171, 'render_ptcss', 0.5, render='transform:rotate(180deg);')`抛ServerError
  - 似乎是只要render非空就抛ServerError。
+ - 在访问`/api/media/search?offset=0&num=20&media_id_desc=1&token=...`时返回`{"status": "error","message": "system_error","error_details":"Table 'ottosql.favorite' doesn't exist"}`
+ - 在_request里加上了对error_details的处理。
+ - 
  - 
  - 你不应该看到这些。
  - 晚了啊。｢在ou375删掉麦田电台之前｣。

@@ -24,7 +24,7 @@
 | `MethodNotAllowed`       | 请求方法不允许            | 405                                                         |
 | `ExhaustedRetriesError`  | 耗尽重试次数             | `config.retries`规定的重试次数耗尽                                   |
 | `DurationDetectionError` | 在自动检测视频时长时失败       | 由`postDraft()`下的`checkDur()`抛出。                             |
-
+| `VerificationError`      | 校验时失败              |                                                             |
 
 ## 1.5.2 API异常❓
 
@@ -34,9 +34,9 @@ API异常。均来自`_request()`。子异常：
 
 | 类名                               | doc                      | 注                                               |
 |----------------------------------|--------------------------|-------------------------------------------------|
-| `ServerError`                    | 系统错误 (服务器返回system_error) | 若合集不存在，会在`getBlogCollItems()`内抛出。               |
+| `ServerError`                    | 系统错误 (服务器返回system_error) | 可能在各种地方出现。                                      |
 | `WrongPasswordError`             | 密码错误                     |                                                 |
-| `PasswordMismatchError`          | 两次密码不一致                  |                                                 |
+| `PasswordMismatchError`          | 两次密码不一致                  | 此错误不应该发生。                                       |
 | `EmailExistError`                | 邮箱已注册                    |                                                 |
 | `VerificationCodeError`          | 验证码错误                    |                                                 |
 | `EmailNotFoundError`             | 邮箱不存在                    |                                                 |

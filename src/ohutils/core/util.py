@@ -113,8 +113,8 @@ class VideoEntry:
     is_gore: bool
 
     _cover: bytes = field(repr=False)  # 封面二进制
-    _video_fp: str  # .ovarc路径
-    _video_offset: int  # video在文件里的偏移
+    _video_fp: str = field(repr=False)  # .ovarc路径
+    _video_offset: int = field(repr=False)  # video在文件里的偏移
     _video_size: int  # video字节数
 
     def extractCover(self) -> bytes:
@@ -275,6 +275,15 @@ def _raise_exhaust(retries, url, f_name, config):
     raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
 
 
+def _raise_not_succ(msg):
+    err = _mappings.get(msg, APIError)
+    if err.__name__ == 'ServerError':
+        ed = jsoned.get('error_details')
+        raise err(msg + (f': {ed}' if ed is None else ''))
+    else:
+        raise err(msg)
+
+
 def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Literal['json', 'content', 'stream'],
              f_name: str, url: str, *, config: Config = None, data=None,
              is_long: bool = False, is_chat: bool = False, chat_token: str = None, stream: bool = False,
@@ -346,7 +355,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = resp.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    raise _mappings.get(msg, APIError)(msg)
+                    _raise_not_succ(msg)
                 if isinstance(jsoned, dict):
                     jsoned.pop('status', None)
                 return jsoned
@@ -360,7 +369,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = e.response.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    raise _mappings.get(msg, APIError)(msg)
+                    _raise_not_succ(msg)
             except ValueError:
                 # 如果响应不是JSON
                 if status >= 500:
@@ -415,7 +424,7 @@ def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
         tags=list(set(old.tags + new.tags)),  # 合并标签
         copyright_type=old.copyright_type or new.copyright_type,
         attached_vid=old.attached_vid or new.attached_vid,
-        flags=(old.flags | new.flags) & (_const.F_GORE | _const.F_FORWARD_DIED | _const.F_MANUAL_BUILD)
+        flags=(old.flags | new.flags) & (_const.F_GORE | _const.F_FORWARD_DIED | _const.F_MANUAL)
     )
 
 

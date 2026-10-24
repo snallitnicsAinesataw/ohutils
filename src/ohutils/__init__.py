@@ -4,17 +4,18 @@ from .core import *
 from .core.util import (
     Comment, BlogEntry, Danmaku, VideoEntry, Staff,
     parseTime, formatTime,
-    startEnd,
-    genKey, encrypt, decrypt,
+    genKey,
     dict2BlogComment, getVersion,
     flattenComments,
     mergeBlogEntry,
     appSim, useConfig,
 )
 from .core.config import Config, setGlobalConfig, getGlobalConfig
+from .core.config import getGlobalConfig as gc
 from .peripheral import *
 from .core._const import *
 from .core._const import _version as __version__
+from .arc import indexes as idx
 
 # 日志初始化
 import logging

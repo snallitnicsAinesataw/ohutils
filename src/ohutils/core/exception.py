@@ -318,6 +318,11 @@ class DurationDetectionError(OttoBaseException):
     pass
 
 
+class VerificationError(OttoBaseException):
+    """校验时失败"""
+    pass
+
+
 _mappings = {
     'missing_argument': MissingArgumentError,
     'system_error': ServerError,

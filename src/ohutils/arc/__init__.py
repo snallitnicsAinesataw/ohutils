@@ -7,5 +7,4 @@ from .obarc import (
 from .obchk import (
     loadChunk, buildChunk, BlogChunk
 )
-from .indexes import *
 from .ovarc import *

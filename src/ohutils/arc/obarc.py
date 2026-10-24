@@ -7,7 +7,7 @@ from ..core.util import (
 from typing import List, Dict, Tuple, TypeVar, Optional, Literal
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
-from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED, F_GORE, F_MANUAL_BUILD, F_FORWARD_DIED, F_MULTI_SNAPSHOT
+from ..core._const import _LATEST_OBARC_VER, DEFAULT_TS, _OBARC_END_MARKER, _YELLOW, _RED, F_GORE, F_MANUAL, F_FORWARD_DIED
 import struct
 import zlib
 import time
@@ -143,7 +143,7 @@ def _writeObarc(version: int, bid: int, blog_data: dict, comments: List[Comment]
             if forward is not None:
                 is_unavailable = int(forward.get("is_unavailable"))
             flag = (blog_data.get("is_gore", 0)*F_GORE) | (is_unavailable*F_FORWARD_DIED)
-        flag |= is_manual*F_MANUAL_BUILD
+        flag |= is_manual * F_MANUAL
 
         f.write(b'OBARC')  # 5B magic
         f.write(struct.pack('<B', version))  # 1B版本
@@ -437,7 +437,7 @@ def _archiveBlog(version: int, bid: int, config: Config = None) -> Tuple[Optiona
                 'favorite_count': int(blog_data.get('favorite_count', old_blog.favorite_count)),
                 'view_count': int(blog_data.get('view_count', old_blog.view_count)),
                 'channel_id': int(blog_data.get('channel_id', old_blog.channel_id)),
-                'ts': -parseTime(blog_data.get('time')) or (old_blog.timestamp if old_blog.flags&F_MANUAL_BUILD else -old_blog.timestamp),
+                'ts': -parseTime(blog_data.get('time')) or (old_blog.timestamp if old_blog.flags & F_MANUAL else -old_blog.timestamp),
                 'title': blog_data.get('title', old_blog.title),
                 'content': blog_data.get('content', old_blog.content),
                 'blog_type': int(blog_data.get('blog_type', old_blog.blog_type)),
