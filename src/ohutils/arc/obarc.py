@@ -3,7 +3,7 @@ import requests
 from ..core.config import Config, getGlobalConfig
 from ..core.util import (
     Comment, BlogEntry, getVersion, APIError, decrypt, genKey, logger, parseTime, formatTime,
-    _format, _fn_formatTime, _c, _crc)
+    _format, _fn_formatTime, _c, _crc, flattenComments)
 from typing import List, Dict, Tuple, TypeVar, Optional, Literal
 from ..core.blog_api import getAllBlogComments, getBlogDetail
 from ..core.exception import BIDError
@@ -20,10 +20,10 @@ _T = TypeVar('_T')
 def _parseComment(c_type: Literal['blog', 'video', 'seiga'], version: int, data: bytes, offset: int) -> tuple[Comment, int]:
     pin = 0  # PyCharm别扯
     if version >= 5:
-        bcid, uid, ts, pin, content_len = struct.unpack_from('<IIII I', data, offset)
+        bcid, uid, ts, pin, content_len = struct.unpack_from('<iIII I', data, offset)
         offset += 20
     else:
-        bcid, uid, ts, content_len = struct.unpack_from('<III I', data, offset)
+        bcid, uid, ts, content_len = struct.unpack_from('<iII I', data, offset)
         offset += 16
     content = data[offset:offset + content_len].decode('utf-8')
     offset += content_len
@@ -36,11 +36,12 @@ def _parseComment(c_type: Literal['blog', 'video', 'seiga'], version: int, data:
     replies = []
     for _ in range(reply_count):
         reply, offset = _parseComment(c_type, version, data, offset)
+        reply.parent_cid = bcid
         replies.append(reply)
     if version >= 5:
-        return Comment(bcid, uid, ts, content, reply_count, replies, bool(pin), pin, c_type), offset
+        return Comment(bcid, uid, ts, content, reply_count, replies, bool(pin), pin, c_type, 0), offset
     else:
-        return Comment(bcid, uid, ts, content, reply_count, replies, False, 0, c_type), offset
+        return Comment(bcid, uid, ts, content, reply_count, replies, False, 0, c_type, 0), offset
 
 
 def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: int,
@@ -95,17 +96,14 @@ def _parseBlog(version: int, data: bytes, flags: int, offset: int, channel_id: i
 
 
 def _writeComment(comment_ver: int, f, comment: Comment, pm: bool = None):
-    """pm会继承给子评论。+: True, -: False"""
-    # 这是一个暂时的解决方案。PyCharm LangTool我这句话没有语法错误，不要再｢动词的修饰一般为‘形容词（副词）+地+动词’｣了。
+    """pm：启用+/-判断增删。要树结构。"""
+    # pm是暂时的解决方案。PyCharm LangTool我这句话没有语法错误，不要再｢动词的修饰一般为‘形容词（副词）+地+动词’｣了。
     # 递归写评论
-    sign = 1
-    if pm is not None:
-        sign = 1 if pm else -1
     content_bytes = comment.content.encode('utf-8')
     if pm is None:
         f.write(struct.pack('<I', comment.cid))
     else:
-        f.write(struct.pack('<i', comment.cid * sign))
+        f.write(struct.pack('<i', comment.cid))
     f.write(struct.pack('<I', comment.uid))
     f.write(struct.pack('<I', comment.timestamp))
     if comment_ver >= 5:  # v5新增字段pin_order

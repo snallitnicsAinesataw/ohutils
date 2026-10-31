@@ -103,9 +103,9 @@ verbose=useStartEnd=True:
 | msgPerReq      | 50  | 每次请求获取的**消息**数。使用于`getIM()`、`getChats()`、`getModeration()`。                                                                    |
 | videoPerReq    | 20  | 每次请求获取的**视频**数。使用于`getLatest/Popular/RandomVideos()`。                                                                          |
 | tagsPerReq     | 12  | 每次请求获取的**标签**数。在`getPopularTags()`中使用。                                                                                         |
-| seigaPerReq    | 20  | 每次请求获取的**静画**数。使用于`getRankedSeiga()`、`getRelatedSeiga()`、`getSeigaByTags()`。                                                   |
+| seigaPerReq    | 20  | 每次请求获取的**静画**数。使用于`seiga.getRanked()`、`seiga.getByTags()`。                                                                     |
 | userPerReq     | 18  | 每次请求获取的**用户**数。使用于`getAllFollowers()`、`getAllFollowings()`、`getAllChannelMembers()`。                                           |
-| mediaPerReq    | 12  | 每次请求获取的**素材**数。 在`searchMedia()`中使用。                                                                                           |
+| mediaPerReq    | 12  | 每次请求获取的**素材**数。 在`media.searchMedia()`中使用。                                                                                     |
 
 ### 1.3.1.7 *Path
 包含`savePath, indexPath, seigaPath, mediaPath, videoPath, chunkPath`。默认值均为`'.\\'`。
@@ -114,7 +114,7 @@ verbose=useStartEnd=True:
 
 `indexPath` -> 保存索引文件JSON的路径。
 
-`seigaPath, mediaPath, videoPath` -> 保存静画、素材、**下载的视频文件**(`downloadVideo`)路径。
+`seigaPath, mediaPath, videoPath` -> 保存静画、素材、**下载的视频文件**(`video.downloadVideo`)路径。
 
 `chunkPath` -> `.obchk`文件保存位置。
 
@@ -173,9 +173,9 @@ verbose=useStartEnd=True:
 ### 1.3.1.13 gore
 `gore: bool = True`
 
-是否请求4000+内容。使用于`getLatestBlog()`、`getPopularTags()`、`getRankedSeiga()`、`getRelatedSeiga()`、`getSeigaByTags()`。
+是否请求4000+内容。使用于`blog.getLatestBlog()`、`seiga.getPopularTags()`、`seiga.getRanked()`、`seiga.getByTags()`。
 
-**后三个在禁止访问时会抛出**`GoreNotAllowedError`。
+**在禁止访问时会抛出**`GoreNotAllowedError`。
 
 
 ### 1.3.1.14 lookupTableBias
@@ -187,12 +187,12 @@ verbose=useStartEnd=True:
 ### 1.3.1.15 richLog
 `richLog: bool = True`
 
-是否启用彩色日志。禁用的情况适合写入log文件 或 输出至不支持ANSI转义的终端。
+是否启用彩色日志。禁用的情况适合写入.log文件 或 输出至不支持ANSI转义的终端。
 
 ### 1.3.1.16 chunkSize
 `chunkSize: int = 8192`
 
-块大小。单位：**字节**。使用于`downloadVideo()`、`downloadMedia()`。
+块大小。单位：**字节**。使用于`video.downloadVideo()`、`media.downloadMedia()`。
 
 ### 1.3.1.17 fromDict()
 `@classmethod fromDict(cls, d: dict) -> Config`
@@ -242,10 +242,10 @@ assert cfg.timeout == 30
 复制一个`Config`对象。等价于`dataclasses.replace(config)`。
 
 ---
-## 1.3.2 setGlobalConfig(), getGlobalConfig()
+## 1.3.2 setGlobalConfig(), getGlobalConfig(), gc()
 `setGlobalConfig(config: Config) -> None` `getGlobalConfig() -> Config`
 
-设置、获取全局配置。
+设置、获取全局配置。`gc()`是`getGlobalConfig()`的别名。
 
 ## 1.3.3 useConfig()
 `@contextmanager useConfig(config: Config) -> Generator[Config, None, None]`
@@ -263,10 +263,10 @@ cfg2 = ohutils.Config(alwaysUseToken=True)
 cfg3 = ohutils.Config(verbose=True)
 ohutils.setGlobalConfig(cfg1)
 
-ohutils.blog_api.getBlogDetail(12306)  # 使用cfg1
+ohutils.blog.getBlogDetail(12306)  # 使用cfg1
 with ohutils.useConfig(cfg2):
-    ohutils.blog_api.getBlogDetail(12306)  # 使用cfg2
-    ohutils.blog_api.getBlogDetail(12306, config=cfg3)  # 使用cfg3
+    ohutils.blog.getBlogDetail(12306)  # 使用cfg2
+    ohutils.blog.getBlogDetail(12306, config=cfg3)  # 使用cfg3
     ohutils.setGlobalConfig(cfg3)          # 无效
-    ohutils.blog_api.getBlogDetail(12306)  # 还是cfg2
+    ohutils.blog.getBlogDetail(12306)  # 还是cfg2
 ```

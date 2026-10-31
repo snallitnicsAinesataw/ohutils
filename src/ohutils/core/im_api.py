@@ -57,11 +57,11 @@ def getUnreadCounts(config: Config = None) -> dict:
 
 
 @startEnd
-def getIM(receiver: int, offset: int = 0, config: Config = None) -> list:
+def getIM(sender: int, offset: int = 0, config: Config = None) -> list:
     """获取与指定uid的私信记录。需要token。"""
     if config is None:
         config = getGlobalConfig()
-    url = f"https://{config.APIBase}api/im/conversations/{receiver}/messages?offset={offset}"\
+    url = f"https://{config.APIBase}api/im/conversations/{sender}/messages?offset={offset}"\
           f"&num={config.msgPerReq}&if_time_desc={int(not config.ascending)}&token={quote(config.token, safe='')}"
     return _request('get', 'json', 'getIM', url, config=config)['data']['message_list']
 

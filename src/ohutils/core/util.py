@@ -40,7 +40,7 @@ class Comment(Generic[_TParent]):
     replies: List['Comment[_TParent]']
     is_pinned: bool
     pin_order: int
-    c_type: Literal['blog', 'video', 'seiga']
+    c_type: Literal['blog', 'video', 'seiga'] = field(repr=False)
     parent_cid: int = 0
 
 
@@ -275,11 +275,11 @@ def _raise_exhaust(retries, url, f_name, config):
     raise ExhaustedRetriesError(f"[{f_name}]{_c(_const._RED, t_, config)}")
 
 
-def _raise_not_succ(msg):
+def _raise_not_succ(jsoned, msg):
     err = _mappings.get(msg, APIError)
     if err.__name__ == 'ServerError':
         ed = jsoned.get('error_details')
-        raise err(msg + (f': {ed}' if ed is None else ''))
+        raise err(msg + (f': {ed}' if ed is not None else ''))
     else:
         raise err(msg)
 
@@ -299,7 +299,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
     if config.alwaysUseToken and not is_chat:
         # is_chat=True时此配置无效
         parsed = urlparse(url)
-        query: dict[str, List[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
+        query: dict[str, list[str]] = parse_qs(parsed.query)  # noqa, PyCharm别扯
         query['token'] = [config.token]
         new_query = urlencode(query, doseq=True)
         url = urlunparse(parsed._replace(query=new_query))
@@ -355,7 +355,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = resp.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    _raise_not_succ(msg)
+                    _raise_not_succ(jsoned, msg)
                 if isinstance(jsoned, dict):
                     jsoned.pop('status', None)
                 return jsoned
@@ -369,7 +369,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                 jsoned = e.response.json()
                 stat, msg = jsoned.get("status"), jsoned.get('message')
                 if stat != "success":
-                    _raise_not_succ(msg)
+                    _raise_not_succ(jsoned, msg)
             except ValueError:
                 # 如果响应不是JSON
                 if status >= 500:
@@ -393,17 +393,35 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
     _raise_exhaust(retries, url, f_name, config)  # 末尾raise
 
 
-def flattenComments(recur_list: list[Comment[_T]]) -> list[Comment[_T]]:
-    """将评论树展平。"""
+def flattenComments(cmt: list[Comment[_T]]) -> list[Comment[_T]]:
+    """将评论树展平，清空replies。"""
     res = []
-    for c in recur_list:
+    for c in cmt:
         res.append(c)
         if c.replies:
             flat = flattenComments(c.replies)
             for rc in flat:
                 rc.parent_cid = c.cid
             res.extend(flat)
+        c.replies = []
     return res
+
+
+def foldComments(flat: list[Comment[_T]]) -> list[Comment[_T]]:
+    """将扁平评论列表还原为树，若父不在列表里当作根处理。"""
+    by_cid = {c.cid: c for c in flat}
+    roots = []
+    for c in flat:
+        c.replies = []   # 清空，后面重建
+    for c in flat:
+        if c.parent_cid and c.parent_cid in by_cid:
+            parent = by_cid[c.parent_cid]
+            parent.replies.append(c)
+            c.parent_cid = parent.cid   # 已经对，但确保
+        else:
+            c.parent_cid = 0            # 根，设为0
+            roots.append(c)
+    return roots
 
 
 def mergeBlogEntry(old: BlogEntry, new: BlogEntry) -> BlogEntry:
@@ -521,7 +539,7 @@ def _format(pattern: str, **k):
 
 def _temp_name(name: str) -> str:
     rand = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    return f"{name}.{rand}.ohu-temp"
+    return f"{name}.{rand}.ohutemp"
 
 
 def _fn_formatTime(ts: int) -> str:
@@ -538,10 +556,16 @@ def _iter_chunks(stream, chunk_size=8192):
     if isinstance(stream, bytes):
         for i in range(0, len(stream), chunk_size):
             yield stream[i:i + chunk_size]
-    else:  # Response
+    elif isinstance(stream, Response):  # Response
         for chunk_ in stream.iter_content(chunk_size):
-            if chunk_: yield chunk_
-
+            if chunk_:
+                yield chunk_
+    elif hasattr(stream, 'read'):  # 文件对象
+        while True:
+            chunk_ = stream.read(chunk_size)
+            if not chunk_:
+                break
+            yield chunk_
 
 def _tag_factory(tags: list[str]) -> str:
     try:

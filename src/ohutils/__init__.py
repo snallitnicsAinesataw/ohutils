@@ -6,7 +6,7 @@ from .core.util import (
     parseTime, formatTime,
     genKey,
     dict2BlogComment, getVersion,
-    flattenComments,
+    flattenComments, foldComments,
     mergeBlogEntry,
     appSim, useConfig,
 )
@@ -16,6 +16,7 @@ from .peripheral import *
 from .core._const import *
 from .core._const import _version as __version__
 from .arc import indexes as idx
+from .arc.ovarc import VideoSnapshots  # 把VideoSnapshots提到根方便isinstance
 
 # 日志初始化
 import logging

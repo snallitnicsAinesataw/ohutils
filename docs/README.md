@@ -1,17 +1,17 @@
 # OHUtils
 [OTTOHub](https://www.ottohub.cn/) 数据工具集。
 
-[文档目录](nav.md)
+[文档目录](nav.md)；[ReadTheDocs](https://ohutils.readthedocs.io/zh-cn/latest/)
 
 ---
 ## 功能
 - API封装
 - 动态/视频/静画/素材等数据获得
-- 多格式存档 (.obarc, .obchk; .db)
+- 多格式存档 (.obarc, .obchk, .ovarc; .db)
 - 聊天室客户端
 
 ## 安装
-从源码安装：
+从源码安装:
 ```commandline
 git clone https://github.com/snallitnicsAinesataw/ohutils.git
 cd ohutils
@@ -29,6 +29,6 @@ pip install ohutils
 ```python
 import ohutils
 
-blog: dict = ohutils.blog_api.getBlogDetail(4824)
+blog: dict = ohutils.blog.getBlogDetail(4824)
 print(blog.get('title'))  # 'OTTOHUB审核细则'
 ```

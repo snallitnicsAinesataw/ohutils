@@ -18,24 +18,24 @@ def getPopularTags(offset: int = 0, config: Config = None) -> list:
 
 
 @startEnd
-def getRankedSeiga(offset: int = 0, is_doujin: bool = False, is_hall: bool = False,
-                   time_limit: Literal['daily', 'weekly', 'monthly', 'all'] = 'daily', config: Config = None) -> list:
+def getRanked(offset: int = 0, is_doujin: bool = False, is_hall: bool = False,
+              time_limit: Literal['daily', 'weekly', 'monthly', 'all'] = 'daily', config: Config = None) -> list:
     """获取静画｢按时段统计的排行榜｣。
     time_limit支持的常量：ohutils.SG_*"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/seiga/ranking?offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}" \
           f"&is_fanwork={int(is_doujin)}&is_hall={int(is_hall)}&span={time_limit}"
-    return _request('get', 'json', 'getRankedSeiga', url, config=config)['data']['seiga_list']
+    return _request('get', 'json', 'getRanked', url, config=config)['data']['seiga_list']
 
 
 @startEnd
-def getSeigaByTags(tag: str, offset: int = 0, config: Config = None) -> list:
+def getByTags(tag: str, offset: int = 0, config: Config = None) -> list:
     """获取指定标签下的静画。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/seiga/search?tag={tag}&offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"
-    return _request('get', 'json', 'getSeigaByTags', url, config=config)['data']['seiga_list']
+    return _request('get', 'json', 'getByTags', url, config=config)['data']['seiga_list']
 
 
 @startEnd
@@ -69,23 +69,23 @@ def downloadSeiga(sid: int, config: Config = None) -> bool:
 
 
 @startEnd
-def getSeigaTags(sid: int, config: Config = None) -> dict:
+def getTagsOf(sid: int, config: Config = None) -> dict:
     """获取指定sid的静画标签。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/seiga/{sid}/tags"
-    res = _request('get', 'json', 'getSeigaTags', url, config=config)
+    res = _request('get', 'json', 'getTagsOf', url, config=config)
     del res['sid']
     return res
 
 
 @startEnd
-def getRelatedSeiga(sid: int, offset: int = 0, config: Config = None) -> list[dict]:
+def _getRelatedSeiga(sid: int, offset: int = 0, config: Config = None) -> list[dict]:
     """获取指定sid的一组｢相关推荐｣(不递归)。"""
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.APIBase}api/seiga/related/{sid}?offset={offset}&num={config.seigaPerReq}&is_gore={int(config.gore)}"
-    return _request('get', 'json', 'getRelatedSeiga', url, config=config)['data']['seiga_list']
+    return _request('get', 'json', '_getRelatedSeiga', url, config=config)['data']['seiga_list']
 
 
 @startEnd
