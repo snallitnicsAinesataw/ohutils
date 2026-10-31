@@ -55,11 +55,11 @@ class VideoSnapshots:
         self.uid = uid
         self.vid = vid
         self.pub_ts = pub_ts
-        self.flags = h_flag
+        self.file_flags = h_flag
         self._ss = sorted(ss, key=lambda s: s.snapshot_ts, reverse=True)  # 新 -> 老
         self._fp = fp
 
-    def _spec(self, layer):
+    def _spec(self, layer, internal: bool = False):
         base = self._ss[layer]
 
         def trace(attr):
@@ -69,29 +69,78 @@ class VideoSnapshots:
                     return v
             return None
 
-        def trace_pair(a1, a2):
+        def trace_video():
             for i in range(layer, self._s_num):
                 s = self._ss[i]
-                if getattr(s, a1) is not None and getattr(s, a2) is not None:
-                    return getattr(s, a1), getattr(s, a2)
-            return None, None
+                if s.v_offset is not None:
+                    return s.v_offset, s.v_size, s.v_sha1
+            return None, None, None
 
-        v_off, v_sz = trace_pair('v_offset', 'v_size')
+        def replay_cmt():
+            comments = {}
+            for i in range(self._s_num - 1, layer - 1, -1):
+                for c in (self._ss[i].cmt or []):
+                    if c.cid > 0:
+                        comments[c.cid] = c
+                    else:
+                        comments.pop(-c.cid, None)
+            return list(comments.values())
 
-        ve = VideoEntry(
-            vid=self.vid, uid=self.uid, pub_time=self.pub_ts,
-            like_count=base.like, favorite_count=base.fav, view_count=base.view,
-            duration=base.dur, vid_type=base.vt, category=base.cat, channel_id=base.cnl_id,
-            arc_time=base.snapshot_ts, is_gore=base.is_gore,
-            tags=trace('tags'), title=trace('title'), intro=trace('intro'),
-            staffs=trace('staffs'), danmaku=trace('dan'), comments=trace('cmt'),
-            _cover=trace('c_b'), _video_fp=self._fp, _video_offset=v_off, _video_size=v_sz)
-        if None in asdict(ve).values():
-            logger.error(f'[VideoSnapshots]underflow when tracing layer {layer}, values in VideoEntry can be None')
+        def replay_dan():
+            dan = {}
+            for i in range(self._s_num - 1, layer - 1, -1):
+                for d in (self._ss[i].dan or []):
+                    if d.danmaku_id > 0:
+                        dan[d.danmaku_id] = d
+                    else:
+                        dan.pop(-d.danmaku_id, None)
+            return list(dan.values())
+
+        def replay_tags():
+            tags = []
+            for i in range(self._s_num - 1, layer - 1, -1):
+                for t in (self._ss[i].tags or []):
+                    if t.startswith('+'):
+                        tags.append(t[1:])
+                    elif t.startswith('-'):
+                        tags = [x for x in tags if x != t[1:]]
+            return tags
+
+        def replay_staffs():
+            staffs = {}
+            for i in range(self._s_num - 1, layer - 1, -1):
+                for s in (self._ss[i].staffs or []):
+                    if s.uid > 0:
+                        staffs[s.uid] = s
+                    else:
+                        staffs.pop(-s.uid, None)
+            return list(staffs.values())
+
+        v_off, v_sz, v_sha1 = trace_video()
+
+        if internal:
+            ve = _ISnapshotVesicle(
+                vid=self.vid, like=base.like, fav=base.fav, view=base.view, dur=base.dur, cnl_id=base.cnl_id,
+                c_sha1=trace('c_sha1'), cat=base.cat, dan=replay_dan(), cmt=replay_cmt(), is_gore=base.is_gore,
+                snapshot_ts=base.snapshot_ts, title=trace('title'), intro=trace('intro'), vt=base.vt,
+                tags=replay_tags(),
+                next_addr=base.next_addr, staffs=replay_staffs(), v_offset=v_off, v_size=v_sz, v_sha1=v_sha1)
+        else:
+            ve = VideoEntry(
+                vid=self.vid, uid=self.uid, pub_time=self.pub_ts,
+                like_count=base.like, favorite_count=base.fav, view_count=base.view,
+                duration=base.dur, vid_type=base.vt, category=base.cat, channel_id=base.cnl_id,
+                arc_time=base.snapshot_ts, is_gore=base.is_gore,
+                tags=replay_tags(), title=trace('title'), intro=trace('intro'),
+                staffs=replay_staffs(), danmaku=replay_dan(), comments=replay_cmt(),
+                _cover=trace('c_b'), _video_fp=self._fp, _video_offset=v_off, _video_size=v_sz)
+        if None in asdict(ve).values() and not internal:
+            t_ = '[_writeOvarc2p_append/_spec' if internal else '[VideoSnapshots'
+            logger.error(t_ + f']underflow when tracing layer {layer}, values in VideoEntry can be None')
         return ve
 
-    def latest(self) -> VideoEntry:
-        return self._spec(0)
+    def latest(self, layer: int = 0) -> VideoEntry:
+        return self._spec(min(layer, self._s_num))
 
     def all(self) -> list[VideoEntry]:
         res = []
@@ -159,6 +208,7 @@ def _readSnapshot(ver: int, vid: int, f, snapshot_addr, verify: bool = True, par
         h_meta_s = f.tell()
     like, fav, view, dur, v_c, cid = struct.unpack('<IIIIBI', f.read(21))
     vid_type, category, gore = (v_c >> 4), v_c & 0xf, bool(flag2 & F_GORE)
+    # print(f"******RS/start: flag_cg={flag_cg}, cd_len={cd_len}, ss_addr={snapshot_addr}")
     if flag_cg & 1:
         # title更改
         title_len = struct.unpack('<H', f.read(2))[0]
@@ -173,7 +223,9 @@ def _readSnapshot(ver: int, vid: int, f, snapshot_addr, verify: bool = True, par
         tags = []
         for _ in range(tag_count):
             tl = struct.unpack('<h', f.read(2))[0]
-            tags.append(f.read(abs(tl)).decode('utf-8'))
+            tg = f.read(abs(tl)).decode('utf-8')
+            tg = ('+' if tl > 0 else '-') + tg
+            tags.append(tg)
     if flag_cg & 8:
         # staffs更改
         staff_count = struct.unpack('<B', f.read(1))[0]
@@ -185,6 +237,7 @@ def _readSnapshot(ver: int, vid: int, f, snapshot_addr, verify: bool = True, par
             sort_order = struct.unpack('<I', f.read(4))[0]
             staffs.append(Staff(abs(s_uid), role, sort_order))
     cd_data = f.read(cd_len)
+    # print(f"******RS/cmt_before: cd_data.len={len(cd_data)}, cd_len={cd_len}, f.tell={f.tell()}")
     offset = 0
     if flag_cg & 16:
         # comments更改
@@ -208,7 +261,8 @@ def _readSnapshot(ver: int, vid: int, f, snapshot_addr, verify: bool = True, par
         h_meta = hashlib.sha1(struct.pack('<B', flag2))
         h_meta.update(f.read(h_meta_e - h_meta_s))  # 计算h_meta
         f.seek(h_meta_e)
-        # print(f"******R: h_meta_s={h_meta_s}, h_meta_e={h_meta_e}, flag2={flag2}, ss_addr={snapshot_addr}, flag_cg={flag_cg}, flag2={flag2}, cd_len={cd_len}")
+        # print(f"******RS/verify: h_meta_s={h_meta_s}, h_meta_e={h_meta_e}, flag2={flag2}, ss_addr={snapshot_addr},\\")
+        # print(f"******RS/verify: flag_cg={flag_cg}, cd_len={cd_len}")
         if h_meta.digest() != sha1:
             raise VerificationError(f'快照sha1不匹配: 应为{sha1.hex()}, 实为{h_meta.hexdigest()}')
     if flag_cg & 64:
@@ -240,7 +294,7 @@ def _writeSnapshot_stp1(ver: int, f, *, title, intro, vid_type, category, channe
     """f模式：wb或r+b。
     tags示：['-YTPMV', '+音MAD']。staff中Staff的uid：正加负删，Comment.cid、Danmaku id同。
     comments传入要展平。返回info_, h_meta, video_size, h_video。"""
-    # print(f"******W1: (before h_meta=hashlib.sha1()) ss_addr={f.tell()}")
+    # print(f"******W1/start: (before h_meta=hashlib.sha1()) ss_addr={f.tell()}")
     h_meta = hashlib.sha1()
     info_ = {}
     f.write(struct.pack('<Q', 0))  # 8B next_snapshot_addr = 0
@@ -287,7 +341,7 @@ def _writeSnapshot_stp1(ver: int, f, *, title, intro, vid_type, category, channe
     info_['cd_s'] = f.tell()
     if flag_cg & 16:
         roots = foldComments(comments)  # 先建树
-        # print(f'******W1: roots={roots}')
+        # print(f'******W1/cmt_in: roots={roots}')
         f.write(struct.pack('<I', len(roots)))  # 顶层数
         for c in roots:
             _writeComment(_LATEST_OBARC_VER, f, c, pm=True)
@@ -341,7 +395,7 @@ def _writeSnapshot_stp2(ver: int, f, info_, h_meta, video_size, h_video, flag2):
         f.write(h_video.digest())
     f.seek(info_['sha1_put'])
     f.write(h_meta.digest())
-    # print(f"******W2: meta_s={info_['meta_s']}, meta_e={info_['meta_e']}, flag2={flag2}, cd_s={info_['cd_s']}, ")
+    # print(f"******W2/end: meta_s={info_['meta_s']}, meta_e={info_['meta_e']}, flag2={flag2}, cd_s={info_['cd_s']}")
 
 
 def _writeOvarc1(vid: int, video_data: dict, comments: list[Comment], danmaku: list[Danmaku],
@@ -526,7 +580,7 @@ def _writeOvarc2p_append(version: int, vid: int, video_data: dict, comments: lis
     fn = f'w2p+_ov{vid}.buf'
     tfp = os.path.join(config.savePath, _temp_name(fn))
     h_video = hashlib.sha1()
-    logger.info(f'[_writeOvarc2p_append/v{version}]Write temp video file to {tfp}')
+    logger.info(f'[_writeOvarc2p_append/v{version}]Write temp video file to {tfp}...')
     with open(tfp, 'wb') as f:
         for chunk in _iter_chunks(video_stream, config.chunkSize):
             f.write(chunk)
@@ -539,9 +593,13 @@ def _writeOvarc2p_append(version: int, vid: int, video_data: dict, comments: lis
         f.seek(0xa)
         snapshot_num = struct.unpack('<H', f.read(2))[0]
         f.seek(0x20)
-        last_ss = struct.unpack('<Q', f.read(8))[0]  # 读last_ss
-        info_['new_addr_put'] = last_ss
-        last_ss = _readSnapshot(version, vid, f, last_ss, verify=False, parse=False)
+        last_ss_addr = struct.unpack('<Q', f.read(8))[0]  # 读last_ss
+        info_['new_addr_put'] = last_ss_addr
+        ss = _uni(version, vid, f)
+        vss = VideoSnapshots(DEFAULT_TS, snapshot_num, 0, vid, 0, ss, fp)
+        last_ss: _ISnapshotVesicle = vss._spec(0, internal=True)
+        last_ss.cmt = flattenComments(last_ss.cmt)
+        # print(f'******W+/read_prev: last_ss.next_addr={last_ss.next_addr}, snapshot_ts={last_ss.snapshot_ts}')
         f.seek(-len(_OVARC_END_MARKER), 2)
         info_['new_addr'] = f.tell()
 
@@ -582,7 +640,7 @@ def _writeOvarc2p_append(version: int, vid: int, video_data: dict, comments: lis
                 staffs_delta.append(asdict(s))  # 加或改
         for uid in staffs_old:
             if uid not in staffs_new:
-                staffs_deltadelta.append({'uid': -uid, 'role': '', 'sort_order': 0})  # 删(uid 取负)
+                staffs_delta.append({'uid': -uid, 'role': '', 'sort_order': 0})  # 删(uid 取负)
         del staffs_new, staffs_old
         if staffs_delta:
             flag_cg |= 8
@@ -611,7 +669,9 @@ def _writeOvarc2p_append(version: int, vid: int, video_data: dict, comments: lis
         else:
             flag_cg |= 64
 
-        # print(f'******W+: last_addr={info_["new_addr_put"]}, h_video={h_video.hexdigest()}, last_ss.v_sha1={last_ss.v_sha1.hex()}')
+        # print(f'******W+/video_before: last_addr={info_["new_addr_put"]}, h_video={h_video.hexdigest()}, \\')
+        # print(f'******W+/video_before: last_ss.v_sha1={last_ss.v_sha1.hex()}')
+
         if h_video.digest() == last_ss.v_sha1:
             video_stream = None
         else:
@@ -639,6 +699,8 @@ def _writeOvarc2p_append(version: int, vid: int, video_data: dict, comments: lis
         f.write(struct.pack('<Q', info_['new_addr']))
         f.seek(info_['new_addr_put'])
         f.write(struct.pack('<Q', info_['new_addr']))
+        f.seek(0, 2)
+        f.write(_OVARC_END_MARKER)
     os.remove(tfp)
     logger.info(f'[_writeOvarc2p_append/v{version}]temp video file cleared')
 
@@ -749,20 +811,25 @@ def _loadOvarc1(fp: str) -> VideoEntry:
     )
 
 
+def _uni(version: int, vid: int, f) -> list[_ISnapshotVesicle]:
+    res = []
+    addr = 0x28  # 第一个快照
+    while addr != 0:
+        vesicle = _readSnapshot(version, vid, f, addr)
+        res.append(vesicle)
+        addr = vesicle.next_addr
+    return res
+
+
 def _loadOvarc2p(version: int, fp: str) -> VideoSnapshots:
-    snapshots = []
     with open(fp, "rb") as f:
         header = f.read(6)
         # 提取头
         if header[:5] != b'OVARC':
             raise VerificationError(f"{fp}不是有效的.ovarc文件")
         pub_ts, s_num, uid, size, _, vid, flag, _, last_ss = struct.unpack('<IHIQHIBBQ', f.read(34))
-        addr = 0x28  # 第一个快照
-        while addr != 0:
-            vesicle = _readSnapshot(version, vid, f, addr)
-            snapshots.append(vesicle)
-            addr = vesicle.next_addr
-    return VideoSnapshots(pub_ts, s_num, uid, vid, flag, snapshots, fp)
+        ss = _uni(version, vid, f)
+    return VideoSnapshots(pub_ts, s_num, uid, vid, flag, ss, fp)
 
 
 def _loadOvarc_disp(ver, fp):

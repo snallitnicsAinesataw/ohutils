@@ -24,6 +24,7 @@ from . import _const
 import string
 import io
 import zlib
+import glob
 
 _TParent = TypeVar('_TParent', bound=Union['VideoEntry', 'BlogEntry'])
 _T = TypeVar('_T')
@@ -319,7 +320,7 @@ def _request(method: Literal['get', 'post', 'put', 'delete'], return_type: Liter
                     f"[{f_name}]{method} {_c(_const._GRAY, t_cutted + ('...' if t_cutted != t_url else ''), config)}")
 
             headers = dict(config.headers)
-            headers.setdefault('User-Agent', 'OHUtils/0.9.0')  # 水印，大概
+            headers.setdefault('User-Agent', 'OHUtils/' + _const._version)  # 水印，大概
             if is_video:
                 headers['Range'] = 'bytes=0-'
             if chat_token is not None:
@@ -412,14 +413,14 @@ def foldComments(flat: list[Comment[_T]]) -> list[Comment[_T]]:
     by_cid = {c.cid: c for c in flat}
     roots = []
     for c in flat:
-        c.replies = []   # 清空，后面重建
+        c.replies = []  # 清空，后面重建
     for c in flat:
         if c.parent_cid and c.parent_cid in by_cid:
             parent = by_cid[c.parent_cid]
             parent.replies.append(c)
-            c.parent_cid = parent.cid   # 已经对，但确保
+            c.parent_cid = parent.cid  # 已经对，但确保
         else:
-            c.parent_cid = 0            # 根，设为0
+            c.parent_cid = 0  # 根，设为0
             roots.append(c)
     return roots
 
@@ -567,6 +568,7 @@ def _iter_chunks(stream, chunk_size=8192):
                 break
             yield chunk_
 
+
 def _tag_factory(tags: list[str]) -> str:
     try:
         tags.remove('吉吉国民')
@@ -575,7 +577,7 @@ def _tag_factory(tags: list[str]) -> str:
     return "#" + "#".join(str(t) for t in tags)
 
 
-def _crc(f, start, end, chunk = 1 << 20):
+def _crc(f, start, end, chunk=1 << 20):
     crc = 0
     f.seek(start)
     remaining = end - start
