@@ -218,7 +218,7 @@ class FileTooBigError(OttoBaseException):
     pass
 
 
-class FileNotProvidedError(OttoBaseException):
+class FileNotProvidedError(APIError):
     """缺少文件"""
     pass
 

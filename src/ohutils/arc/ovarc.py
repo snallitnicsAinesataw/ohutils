@@ -139,8 +139,8 @@ class VideoSnapshots:
             logger.error(t_ + f']underflow when tracing layer {layer}, values in VideoEntry can be None')
         return ve
 
-    def latest(self, layer: int = 0) -> VideoEntry:
-        return self._spec(min(layer, self._s_num))
+    def head(self, layer: int = 0) -> VideoEntry:
+        return self._spec(min(layer, self._s_num - 1))
 
     def all(self) -> list[VideoEntry]:
         res = []
@@ -152,7 +152,7 @@ class VideoSnapshots:
         return self._s_num
 
     def __repr__(self):
-        return f"<VideoSnapshots ({self._s_num} entries)>"
+        return f"<VideoSnapshots ({self._s_num} snapshots)>"
 
     def __str__(self):
         return self.__repr__()

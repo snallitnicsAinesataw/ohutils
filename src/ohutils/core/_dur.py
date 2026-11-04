@@ -2,7 +2,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from .exception import FileNotProvidedError, DurationDetectionError
+from .exception import DurationDetectionError
 from .util import logger
 from typing import Union
 
@@ -12,7 +12,7 @@ def checkDur(path: Union[str, Path]) -> float:
     # deepseek写的。我不会写。
     p = Path(path)
     if not p.is_file():
-        raise FileNotProvidedError(f"file not found: {p}")
+        raise FileNotFoundError(f"file not found: {p}")
 
     def _via_ffprobe(pa: Path):
         if shutil.which('ffprobe') is None:

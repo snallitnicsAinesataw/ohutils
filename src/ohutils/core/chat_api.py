@@ -59,8 +59,7 @@ class ChatClient(websocket.WebSocketApp):
                          on_error=self._on_error,
                          on_close=self._on_close,
                          on_ping=self._on_ping,
-                         on_pong=self._on_pong,
-                         )
+                         on_pong=self._on_pong)
 
     def _on_open(self, ws):
         # 默认函数。
@@ -117,7 +116,7 @@ class ChatClient(websocket.WebSocketApp):
                 self._user_on_chat(ws, data)
             elif self._config.verbose:
                 logger.info('[ChatClient/msg:chat]'
-                            f'id={data["id"]}@{data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
+                            f'id={data["id"]} @ {data["created_at"]}: <ou{data["uid"]}> {data["content"]}' +
                             (f'  (reply id={data["reply"]["id"]})' if data["reply"] is not None else ''))
         elif type_ == 'message_deleted' and self._config.verbose:
             logger.info(f'[ChatClient/msg:delMsg]id={data["id"]} deleted in room \'{self.room}\'')
@@ -157,7 +156,7 @@ class ChatClient(websocket.WebSocketApp):
         if self.sock and self.sock.connected:
             self.close()
 
-    def sendMessage(self, content: str, reply_id: int = None):
+    def sendMsg(self, content: str, reply_id: int = None):
         """发送聊天消息。"""
         if self._guest:
             return
@@ -166,19 +165,19 @@ class ChatClient(websocket.WebSocketApp):
             load['reply'] = reply_id
         self.send(json.dumps(load))
 
-    def deleteMessage(self, msg_id: int):
+    def deleteMsg(self, msg_id: int):
         """删除聊天消息。"""
         if self._guest:
             return
         return deleteMessage(msg_id, self._token, self._config)
 
-    def blockUser(self, uid: int):
+    def block(self, uid: int):
         """拉黑指定uid。"""
         if self._guest:
             return
         return blockUser(uid, self._token, self._config)
 
-    def unblockUser(self, uid: int):
+    def unblock(self, uid: int):
         """取消拉黑指定uid。"""
         if self._guest:
             return
@@ -189,6 +188,12 @@ class ChatClient(websocket.WebSocketApp):
         if self._guest:
             return []
         return getBlockUsers(self._token, self._config)
+
+    def __repr__(self):
+        return f"<ChatClient(room '{self.room}')>"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 @startEnd
@@ -224,7 +229,7 @@ def getChats(config: Config = None) -> dict:
                     chat_token=chat_token if config.alwaysUseToken else None)['data']
 
 
-def connectChat(room: str = 'main', config: Config = None, threaded: bool = True, beat_interval: int = 30,
+def connectChat(room: str = 'main', config: Config = None, *, threaded: bool = True, beat_interval: int = 30,
                 guest: bool = False,
                 on_open: Callable[[websocket.WebSocketApp], None] = None,
                 on_message: Callable[[websocket.WebSocketApp, dict], None] = None,
@@ -264,7 +269,7 @@ def deleteMessage(msg_id: int, chat_token: str, config: Config = None):
     if config is None:
         config = getGlobalConfig()
     url = f"https://{config.chatAPIBase}/api/messages/{msg_id}"
-    return _request('delete', 'json', 'deleteMessage', url, config=config, is_chat=True, chat_token=chat_token)
+    return _request('delete', 'json', 'deleteMsg', url, config=config, is_chat=True, chat_token=chat_token)
 
 
 @startEnd

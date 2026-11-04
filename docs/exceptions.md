@@ -19,7 +19,6 @@
 | `MissingArgumentError`   | 缺少参数               | *可能* 由于缺少`token`引起。                                         |
 | `InvalidFileFormatError` | 非法文件格式             | 视频格式不是mp4、mov、m4v以及封面格式不是jpg、jpeg、png、gif。由`postDraft()`抛出。 |
 | `FileTooBigError`        | 文件太大               | 大于400MB。由`postDraft()`抛出。                                   |
-| `FileNotProvidedError`   | 缺少文件               | 缺少视频文件。由`postDraft()`下的`checkDur()`抛出。                      |
 | `TooManyRequests`        | 请求频率过高             | 429                                                         |
 | `MethodNotAllowed`       | 请求方法不允许            | 405                                                         |
 | `ExhaustedRetriesError`  | 耗尽重试次数             | `config.retries`规定的重试次数耗尽                                   |
@@ -79,6 +78,7 @@ API异常。均来自`_request()`。子异常：
 | `InvalidCoverURLError`           | 封面URL无效                  |                                                 |
 | `InvalidVideoURLError`           | 视频URL无效                  |                                                 |
 | `InvalidDurationError`           | 视频时长无效                   |                                                 |
+| `FileNotProvidedError`           | 缺少文件                     |                                                 |
 | `DraftNotFoundError`             | 草稿不存在                    |                                                 |
 | `DraftExistsError`               | 草稿已存在                    |                                                 |
 | `IndexConflictError`             | 索引冲突                     | ❓                                               |

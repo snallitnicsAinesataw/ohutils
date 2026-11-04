@@ -1,5 +1,5 @@
 # 2.1 聊天室API
-此文档对应`ohutils.chat_api.*` 即`core\chat_api.py`。
+此文档对应`ohutils.chat.*` 即`core\chat_api.py`。
 
 [目录](nav.md)
 
@@ -19,7 +19,7 @@
 
  - **参数**:
    - `chat_token: str` -> 聊天室token。
-   - *可选* `config` -> Config对象。不提供则使用全局配置或`useConfig(...)`设定的配置。
+   - *可选* `config` -> Config对象。
  - **返回**: 字典`{uid: int, username: str, is_admin: int, mute}`。
  - **注**: `mute`字段当前未知具体含义。
 
@@ -36,7 +36,7 @@
    - **reply**: `{id: int, uid: int, username: str, content: str, deleted: bool}`。若为`None`则表示不回复消息。
  
 ## 2.1.4 connectChat() 🔑🔓
-`connectChat(room, config, threaded, beat_interval, guest, 
+`connectChat(room, config, *, threaded, beat_interval, guest, 
 on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat, on_online_change, on_welcome)
   -> tuple[ChatClient, Thread] | ChatClient`
 
@@ -66,7 +66,7 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
    - 当`threaded`为`True`时：返回`(ChatClient实例, threading.Thread)`。
    - 当`threaded`为`False`时：返回`ChatClient`实例。**此时需要手动调用`client.run_forever()`以运行客户端**。
  - **注意**：
-   - 即使传递了`on_chat`/`on_message`/`on_online_change`参数, `on_message`**仍会被调用**。
+   - 即使传递了`on_chat`/`on_welcome`/`on_online_change`参数, `on_message`**仍会被调用**。
  
 ### 2.1.4.2 on_message格式
 | `type`            | 其它键值                                                                                                                           |
@@ -97,8 +97,8 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
 聊天室客户端。`websocket.WebSocketApp`的包装。
 **参数**见 2.1.4。
 
-### 2.1.5.2 client.sendMessage() 🔑
-`client.sendMessage(self, content: str, reply_id: int = None) -> None`
+### 2.1.5.2 client.sendMsg() 🔑
+`client.sendMsg(self, content: str, reply_id: int = None) -> None`
 
 发送消息。
 
@@ -106,17 +106,17 @@ on_open, on_message, on_error, on_close, on_ping, on_pong, on_reconnect, on_chat
    - `content` -> 消息内容。
    - *可选* `reply_id` -> 回复的消息id。
 
-### 2.1.5.3 client.deleteMessage() 🔑
-`client.deleteMessage(self, msg_id: int) -> None`
+### 2.1.5.3 client.deleteMsg() 🔑
+`client.deleteMsg(self, msg_id: int) -> None`
 
 删除聊天消息。**参数**: `msg_id` -> 消息id。
 
-### 2.1.5.4 client.blockUser() & client.unblockUser() 🔑
-`client.blockUser(self, uid: int) -> None` `client.unblockUser(self, uid: int) -> None`
+### 2.1.5.4 client.block() & client.unblock() 🔑
+`client.block(self, uid: int) -> None` `client.unblock(self, uid: int) -> None`
 
 拉黑/取消拉黑指定uid。
 
-### 2.1.5.5 getBlockUsers() 🔑
+### 2.1.5.5 client.getBlockUsers() 🔑
 `client.getBlockUsers(self) -> list`
 
 返回拉黑用户列表`[{uid, username, created_at: time_str},...]`。

@@ -497,14 +497,13 @@ def _recur_request(f_name: str, recur_func: Callable[[int], tuple[list[_T], Opti
         try:
             items, total = recur_func(off_page)
         except ExhaustedRetriesError as e:
-            logger.error(f"[{f_name}]{_c(_RED, f'fail to get all: {e}', config)}")
+            logger.error(f"[{f_name}]{_c(_const._RED, f'fail to get all: {e}', config)}")
             if all_:
-                logger.warning(f"[{f_name}]{_c(_YELLOW, f'end prematurely, already got {len(all_)} item(s)', config)}")
+                logger.warning(f"[{f_name}]{_c(_const._YELLOW, f'end prematurely, already got {len(all_)} item(s)', config)}")
             break
         if not items:
             if all_:
-                logger.warning(
-                    f"[{f_name}]{_c(_YELLOW, f'end prematurely(empty page), already got {len(all_)} item(s)', config)}")
+                logger.warning(f"[{f_name}]{_c(_const._YELLOW, f'end prematurely(empty page), already got {len(all_)} item(s)', config)}")
             break
         all_.extend(items)
         if total is not None:
